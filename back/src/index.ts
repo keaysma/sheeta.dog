@@ -1,7 +1,6 @@
-import { ServerResponse } from "http";
 import { ClientMessage, ClientMessageType } from "./types/client";
 import { ServerIdentifyMessage, ServerJoinedMessage, ServerLeftMessage, ServerMessage, ServerMessageType, ServerUpdateMessage } from "./types/server";
-import { PositionPayload, WorldState } from "./types/shared";
+import { WorldState } from "./types/shared";
 import { ServerWebSocket } from "bun";
 
 const STATE: WorldState = {};
@@ -28,7 +27,7 @@ Bun.serve<{ id: string }>({
     fetch(req, server) {
         const url = new URL(req.url);
         console.log(url.pathname)
-        if (url.pathname === "/connect"){
+        if (url.pathname === "/connect") {
             if (server.upgrade(req)) {
                 console.log('upgraded!')
                 return;
