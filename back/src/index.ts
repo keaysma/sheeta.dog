@@ -26,10 +26,16 @@ setInterval(() => {
 Bun.serve<{ id: string }>({
     port: 3000,
     fetch(req, server) {
-        if (server.upgrade(req)) {
-            return;
+        const url = new URL(req.url);
+        console.log(url.pathname)
+        if (url.pathname === "/connect"){
+            if (server.upgrade(req)) {
+                console.log('upgraded!')
+                return;
+            }
         }
 
+        console.log('Wiggly')
         return new Response('Wiggly')
     },
     websocket: {
@@ -80,7 +86,7 @@ Bun.serve<{ id: string }>({
             const { id } = ws.data;
 
             const client = CLIENTS[id];
-            if(!client){
+            if (!client) {
                 ws.close()
                 return;
             }
