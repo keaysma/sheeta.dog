@@ -11,9 +11,6 @@
 		"strict": true,
 		"outDir": "out",
 		"paths": {
-			"src/*": [
-				"./src/*",
-			],
 			"$lib": [
 				"./src/lib"
 			],
