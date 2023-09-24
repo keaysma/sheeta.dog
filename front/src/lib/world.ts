@@ -1,42 +1,95 @@
+import { Body, Box, Quaternion, Vec3, World, Material as CannonMaterial, ContactMaterial } from 'cannon-es';
 import type { PositionPayload } from '../types/shared';
-import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Scene, SpotLight, WebGLRenderer } from 'three';
+import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Scene, SpotLight, Vector3, Quaternion as ThreeQuaternion, WebGLRenderer, Material } from 'three';
 
 export let renderer: WebGLRenderer;
 export let camera: PerspectiveCamera;
 export let scene: Scene;
 export let player: Object3D;
 
+let world: World
+const groundMaterial = new CannonMaterial({ friction: 4 })
+const playerMaterial = new CannonMaterial({ friction: .1 })
+const contactGroundPlayer = new ContactMaterial(groundMaterial, playerMaterial, {
+    friction: 1,
+    frictionEquationStiffness: 100
+});
+
 let loop: boolean = true;
+
+const positionMessageToVec3 = (position: PositionPayload['position']): Vec3 =>
+    new Vec3(position.x, position.y, position.z)
+
+const rotationMessageToQuaternion = (rotation: PositionPayload['rotation']): Quaternion =>
+    new Quaternion(rotation.x, rotation.y, rotation.z, rotation.w)
+
+const translateVector3 = (v: Vec3): Vector3 =>
+    new Vector3(v.x, v.y, v.z)
+
+const translateQuaternion = (q: Quaternion): ThreeQuaternion =>
+    new ThreeQuaternion(q.x, q.y, q.z, q.w)
 
 const animate = () => {
     if (!loop) return;
+
+    world.fixedStep();
+
+    const physicsEnabledObjects = scene.children.filter(
+        (child) => child.userData.body
+    )
+    for (const ob of physicsEnabledObjects) {
+        const body: Body = ob.userData.body
+
+        ob.position.copy(translateVector3(body.position))
+        ob.quaternion.copy(translateQuaternion(body.quaternion))
+    }
+
     renderer.render(scene, camera);
     requestAnimationFrame(animate);
 }
 
-export const addPlayer = (id: string, message: PositionPayload) => {
-    const geometry = new BoxGeometry(1, 1, 1);
-    const material = new MeshBasicMaterial({ color: 0x00ff00 });
-    const newPlayer = new Mesh(geometry, material);
-    newPlayer.position.set(message.position.x, message.position.y, message.position.z);
-    newPlayer.rotation.set(
-        message.rotation.x,
-        message.rotation.y,
-        message.rotation.z,
-        message.rotation.order
-    );
-    newPlayer.name = id;
-    scene.add(newPlayer);
+export const createPhysicsBox = ({ position, rotation, size, mass, renderMaterial, physicsMaterial }: { position: Vec3, rotation: Quaternion, size: Vec3, mass: number, renderMaterial?: Material, physicsMaterial?: CannonMaterial }) => {
+    const body = new Body({
+        mass,
+        material: physicsMaterial
+    })
+    body.position.copy(position);
+    body.quaternion.copy(rotation); // this breaks collision???
+    const shape = new Box(size);
+    body.addShape(shape);
+    world.addBody(body);
+
+    const geometry = new BoxGeometry(size.x, size.y, size.z);
+    const meshMaterial = renderMaterial ?? new MeshBasicMaterial({ color: 0x00ff00 });
+    const newBox = new Mesh(geometry, meshMaterial);
+    newBox.position.copy(translateVector3(position));
+    newBox.quaternion.copy(translateQuaternion(rotation));
+    scene.add(newBox);
+
+    newBox.userData.body = body;
+    return newBox;
 }
 
-export const updatePlayer = (playerObject: Object3D, message: PositionPayload) => {
-    playerObject.position.set(message.position.x, message.position.y, message.position.z);
-    playerObject.rotation.set(
-        message.rotation.x,
-        message.rotation.y,
-        message.rotation.z,
-        message.rotation.order
-    );
+export const addPlayer = (id: string, message: PositionPayload) => {
+    const newPlayer = createPhysicsBox({
+        position: positionMessageToVec3(message.position),
+        rotation: rotationMessageToQuaternion(message.rotation),
+        size: new Vec3(1, 1, 1),
+        mass: 10,
+        renderMaterial: new MeshBasicMaterial({ color: 0x00ff00 })
+    });
+    newPlayer.name = id;
+    return newPlayer
+}
+
+export const updatePlayer = (player: Object3D, message: PositionPayload) => {
+    const body: Body = player.userData.body
+    body.position.copy(
+        positionMessageToVec3(message.position)
+    )
+    body.quaternion.copy(
+        rotationMessageToQuaternion(message.rotation)
+    )
 }
 
 export const init = (canvas: HTMLCanvasElement) => {
@@ -45,6 +98,14 @@ export const init = (canvas: HTMLCanvasElement) => {
         innerHeight: height
     } = window;
 
+    // World
+    world = new World({
+        gravity: new Vec3(0, -10, 0),
+        frictionGravity: new Vec3(0, .1, 0),
+    })
+    world.addContactMaterial(contactGroundPlayer)
+
+    // Renderer
     renderer = new WebGLRenderer({ canvas });
     renderer.setSize(width, height);
 
@@ -54,35 +115,45 @@ export const init = (canvas: HTMLCanvasElement) => {
     camera = new PerspectiveCamera(75, width / height, 0.1, 1000);
     scene.add(camera)
 
-    // Animate
-    animate();
-
-    // Floor
-    const floor = new Mesh(
-        new BoxGeometry(50, 0.1, 50),
-        new MeshBasicMaterial({ color: 0x004f00 })
-    );
-    floor.position.y = -1;
-    scene.add(floor);
-
     // Light
     const light = new SpotLight(0xffffff, 1);
     light.position.set(0, 1, 0);
     scene.add(light);
 
+    // Floor
+    const floor = createPhysicsBox({
+        position: new Vec3(0, -1, 0),
+        rotation: new Quaternion(0, 0, 0, 1),
+        size: new Vec3(100, 1, 100),
+        mass: 0,
+        renderMaterial: new MeshBasicMaterial({ color: 0x224422 }),
+        physicsMaterial: groundMaterial
+    });
+
     // Dummy
-    const dummy = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial({ color: 0xff0000 }));
-    dummy.position.x = 2;
-    scene.add(dummy);
+    const dummy = createPhysicsBox({
+        position: new Vec3(0, 5, -5),
+        rotation: new Quaternion(20, 40, 0, 1), 
+        size: new Vec3(1, 1, 1),
+        mass: 1,
+    });
 
     // Player
-    const geometry = new BoxGeometry(1, 1, 1);
-    const material = new MeshBasicMaterial({ color: 0x00ff00 });
-    player = new Mesh(geometry, material);
-    scene.add(player);
+    player = createPhysicsBox({
+        position: new Vec3(0, 1, 0),
+        rotation: new Quaternion(0, 0, 0, 1),
+        size: new Vec3(1, 1, 1),
+        mass: 5,
+        renderMaterial: new MeshBasicMaterial({ color: 0x00ff00 }),
+        physicsMaterial: playerMaterial
+    });
 
-    
+
+
     player.add(camera);
     camera.position.set(0, 2, 5);
     camera.rotation.set(-0.15, 0, 0);
+
+    // Animate
+    animate();
 }

@@ -8,7 +8,7 @@ export interface PositionPayload {
         x: number;
         y: number;
         z: number;
-        order: 'XYZ' | 'XZY' | 'YXZ' | 'YZX' | 'ZXY' | 'ZYX';
+        w: number;
     }
 }
 

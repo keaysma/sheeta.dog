@@ -1,10 +1,12 @@
 import { ServerMessageType, type ServerMessage } from "../types/server";
 import { addPlayer, player, scene, updatePlayer } from "./world";
-import { ClientMessageType, type ClientPingMessage } from "../types/client";
+import { ClientMessageType, type ClientPingMessage, type ClientPositionMessage } from "../types/client";
+import type { Body } from "cannon-es";
 
 export let server: WebSocket;
 let terminated: boolean = false;
 let pingIntervalId: number;
+let updateIntervalId: number;
 
 function onMessage(message: MessageEvent<string>) {
     const data: ServerMessage = JSON.parse(message.data);
@@ -61,11 +63,34 @@ function pingLoop() {
     }
 }
 
+function updateLoop() {
+    const playerBody: Body = player.userData.body;
+
+    if(
+        !playerBody.velocity.isZero() ||
+        !playerBody.angularVelocity.isZero()
+    ){
+        const message: ClientPositionMessage = {
+            type: ClientMessageType.Position,
+            position: player.position,
+            rotation: {
+                x: player.quaternion.x,
+                y: player.quaternion.y,
+                z: player.quaternion.z,
+                w: player.quaternion.w
+            }
+        };
+        server.send(JSON.stringify(message));
+    }
+}
+
 function onOpen() {
     pingIntervalId = setInterval(pingLoop, 5_000)
+    updateIntervalId = setInterval(updateLoop, 5)
 }
 
 function onClose() {
+    clearInterval(updateIntervalId)
     clearInterval(pingIntervalId)
 
     if (!terminated)
@@ -88,7 +113,7 @@ export const init = () => {
     terminated = false;
 
     // server = new WebSocket(`ws://${location.host}/connect`)
-    server = new WebSocket(`ws://localhost:3000/connect`)
+    server = new WebSocket(`ws://192.168.0.102:3000/connect`)
     server.onmessage = onMessage
     server.onclose = onClose
     server.onopen = onOpen

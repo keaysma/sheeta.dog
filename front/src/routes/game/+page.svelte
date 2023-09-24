@@ -3,59 +3,32 @@
 	import * as connection from '$lib/connection';
 	import { onDestroy, onMount } from 'svelte';
 	import { ClientMessageType, type ClientPositionMessage } from '../../types/client';
+	import { Vec3, type Body } from 'cannon-es';
 
 	let canvas: HTMLCanvasElement;
 
-	let currentSpeed = 0.1;
-	let currentRotationSpeed = 0.01;
+	let currentForce = 80;
+	let currentTorque = 60;
 
 	let pressedKeys = new Set<string>();
 	let intervalIdKeyboard: number;
 	intervalIdKeyboard = setInterval(() => {
-		let updated = false;
+		const playerBody: Body = mainScene.player.userData.body;
 
 		if (pressedKeys.has('w')) {
-			mainScene.player.translateZ(-currentSpeed);
-			updated = true;
+			playerBody.applyLocalForce(new Vec3(0, 0, -currentTorque), new Vec3(0, 0, 0));
 		}
 
 		if (pressedKeys.has('a')) {
-			mainScene.player.rotation.y += currentRotationSpeed;
-			updated = true;
+			playerBody.applyTorque(new Vec3(0, currentForce, 0))
 		}
 
 		if (pressedKeys.has('s')) {
-			mainScene.player.translateZ(currentSpeed);
-			updated = true;
+			playerBody.applyLocalForce(new Vec3(0, 0, currentTorque), new Vec3(0, 0, 0));
 		}
 
 		if (pressedKeys.has('d')) {
-			mainScene.player.rotation.y -= currentRotationSpeed;
-			updated = true;
-		}
-
-		if (pressedKeys.has('q')) {
-			mainScene.player.translateX(-currentSpeed);
-			updated = true;
-		}
-
-		if (pressedKeys.has('e')) {
-			mainScene.player.translateX(currentSpeed);
-			updated = true;
-		}
-
-		if (updated) {
-			const message: ClientPositionMessage = {
-				type: ClientMessageType.Position,
-				position: mainScene.player.position,
-				rotation: {
-					x: mainScene.player.rotation.x,
-					y: mainScene.player.rotation.y,
-					z: mainScene.player.rotation.z,
-					order: mainScene.player.rotation.order
-				}
-			};
-			connection.server.send(JSON.stringify(message));
+			playerBody.applyTorque(new Vec3(0, -currentForce, 0))
 		}
 	}, 10);
 
