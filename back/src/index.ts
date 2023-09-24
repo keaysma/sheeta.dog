@@ -45,15 +45,15 @@ Bun.serve<{ id: string }>({
             }
 
             const position = {
-                x: 4,
-                y: 0,
-                z: 0,
+                x: (Math.random() - 0.5) * 50,
+                y: 1,
+                z: (Math.random() - 0.5) * 50,
             };
             const rotation = {
                 x: 0,
                 y: 0,
                 z: 0,
-                order: 'XYZ' as const,
+                w: 1,
             };
             STATE[id] = {
                 position,
