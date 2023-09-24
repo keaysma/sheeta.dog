@@ -1,6 +1,6 @@
 import { Body, Box, Quaternion, Vec3, World, Material as CannonMaterial, ContactMaterial, Shape } from 'cannon-es';
 import type { PositionPayload } from '../types/shared';
-import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Scene, SpotLight, Vector3, Quaternion as ThreeQuaternion, WebGLRenderer, Material, BufferGeometry } from 'three';
+import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Scene, SpotLight, Vector3, Quaternion as ThreeQuaternion, WebGLRenderer, Material, BufferGeometry, CubeTextureLoader, TextureLoader } from 'three';
 
 export let renderer: WebGLRenderer;
 export let camera: PerspectiveCamera;
@@ -141,7 +141,18 @@ export const init = (canvas: HTMLCanvasElement) => {
     renderer = new WebGLRenderer({ canvas });
     renderer.setSize(width, height);
 
+    // Scene
     scene = new Scene();
+
+    // Skybox
+    scene.background = new CubeTextureLoader().setPath('assets/sky/bluecloud_').load([
+        'ft.jpg',
+        'bk.jpg',
+        'up.jpg',
+        'dn.jpg',
+        'rt.jpg',
+        'lf.jpg',
+    ])
 
     // Camera
     camera = new PerspectiveCamera(75, width / height, 0.1, 1000);
