@@ -1,6 +1,6 @@
-import { Body, Box, Quaternion, Vec3, World, Material as CannonMaterial, ContactMaterial } from 'cannon-es';
+import { Body, Box, Quaternion, Vec3, World, Material as CannonMaterial, ContactMaterial, Shape } from 'cannon-es';
 import type { PositionPayload } from '../types/shared';
-import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Scene, SpotLight, Vector3, Quaternion as ThreeQuaternion, WebGLRenderer, Material } from 'three';
+import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Scene, SpotLight, Vector3, Quaternion as ThreeQuaternion, WebGLRenderer, Material, BufferGeometry } from 'three';
 
 export let renderer: WebGLRenderer;
 export let camera: PerspectiveCamera;
@@ -48,26 +48,58 @@ const animate = () => {
     requestAnimationFrame(animate);
 }
 
-export const createPhysicsBox = ({ position, rotation, size, mass, renderMaterial, physicsMaterial }: { position: Vec3, rotation: Quaternion, size: Vec3, mass: number, renderMaterial?: Material, physicsMaterial?: CannonMaterial }) => {
+export const createPhysicsMesh = (
+    {
+        geometry,
+        position,
+        rotation,
+        renderMaterial,
+        mass,
+        colliders,
+        physicsMaterial
+    }: {
+        geometry: BufferGeometry,
+        position: Vec3,
+        rotation: Quaternion,
+        renderMaterial?: Material,
+        mass: number,
+        colliders: (
+            [Shape] & Partial<[Shape, Vec3, Quaternion]>
+        )[],
+        physicsMaterial?: CannonMaterial
+    }
+) => {
     const body = new Body({
         mass,
-        material: physicsMaterial
+        position,
+        quaternion: rotation,
+        material: physicsMaterial,
     })
-    body.position.copy(position);
-    body.quaternion.copy(rotation); // this breaks collision???
-    const shape = new Box(size);
-    body.addShape(shape);
-    world.addBody(body);
+    colliders.forEach(([shape, offset, rotation]) => body.addShape(shape, offset, rotation))
+    world.addBody(body)
 
-    const geometry = new BoxGeometry(size.x, size.y, size.z);
-    const meshMaterial = renderMaterial ?? new MeshBasicMaterial({ color: 0x00ff00 });
-    const newBox = new Mesh(geometry, meshMaterial);
-    newBox.position.copy(translateVector3(position));
-    newBox.quaternion.copy(translateQuaternion(rotation));
-    scene.add(newBox);
+    const meshMaterial = renderMaterial ?? new MeshBasicMaterial({ color: 0xff0000 })
+    const mesh = new Mesh(geometry, meshMaterial)
+    mesh.position.copy(translateVector3(position))
+    mesh.quaternion.copy(translateQuaternion(rotation))
+    scene.add(mesh)
 
-    newBox.userData.body = body;
-    return newBox;
+    mesh.userData.body = body
+    return mesh
+}
+
+export const createPhysicsBox = ({ position, rotation, size, mass, renderMaterial, physicsMaterial }: { position: Vec3, rotation: Quaternion, size: Vec3, mass: number, renderMaterial?: Material, physicsMaterial?: CannonMaterial }) => {
+    return createPhysicsMesh({
+        geometry: new BoxGeometry(size.x * 2, size.y * 2, size.z * 2),
+        position,
+        rotation,
+        renderMaterial,
+        mass,
+        colliders: [
+            [new Box(size)]
+        ],
+        physicsMaterial,
+    })
 }
 
 export const addPlayer = (id: string, message: PositionPayload) => {
@@ -133,7 +165,7 @@ export const init = (canvas: HTMLCanvasElement) => {
     // Dummy
     const dummy = createPhysicsBox({
         position: new Vec3(0, 5, -5),
-        rotation: new Quaternion(20, 40, 0, 1), 
+        rotation: new Quaternion(20, 40, 0, 1),
         size: new Vec3(1, 1, 1),
         mass: 1,
     });
@@ -142,8 +174,8 @@ export const init = (canvas: HTMLCanvasElement) => {
     player = createPhysicsBox({
         position: new Vec3(0, 1, 0),
         rotation: new Quaternion(0, 0, 0, 1),
-        size: new Vec3(1, 1, 1),
-        mass: 5,
+        size: new Vec3(.5, .5, .5),
+        mass: 10,
         renderMaterial: new MeshBasicMaterial({ color: 0x00ff00 }),
         physicsMaterial: playerMaterial
     });
