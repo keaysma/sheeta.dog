@@ -32,6 +32,16 @@
 		if (pressedKeys.has('d')) {
 			playerBody.applyTorque(new Vec3(0, -currentTorque, 0))
 		}
+
+		if (pressedKeys.has(' ') && mainScene.player.userData.canJump) {
+			playerBody.applyLocalForce(new Vec3(0, 150*currentForce, 0), new Vec3(0, 0, 0));
+			mainScene.player.userData.canJump = false;
+		}
+
+		if (pressedKeys.has('z')){
+			playerBody.quaternion.setFromEuler(0, 0, 0)
+			mainScene.player.userData.canJump = true;
+		}
 	}, 1);
 
 	onMount(() => {

@@ -1,6 +1,6 @@
 import { Body, Box, Quaternion, Vec3, World, Material as CannonMaterial, ContactMaterial, Shape, Plane, GSSolver } from 'cannon-es';
 import type { PositionPayload } from '../types/shared';
-import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Scene, SpotLight, Vector3, Quaternion as ThreeQuaternion, WebGLRenderer, Material, BufferGeometry, CubeTextureLoader, TextureLoader, RepeatWrapping, PlaneGeometry, Euler } from 'three';
+import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Scene, SpotLight, Vector3, Quaternion as ThreeQuaternion, WebGLRenderer, Material, BufferGeometry, CubeTextureLoader, TextureLoader, RepeatWrapping, PlaneGeometry, Euler, DirectionalLight, HemisphereLight, MeshLambertMaterial, PCFSoftShadowMap, CameraHelper, VSMShadowMap, PCFShadowMap } from 'three';
 
 export let renderer: WebGLRenderer;
 export let camera: PerspectiveCamera;
@@ -84,20 +84,40 @@ export const createPhysicsMesh = (
     const mesh = new Mesh(geometry, meshMaterial)
     mesh.position.copy(translateVector3(position))
     mesh.quaternion.copy(translateQuaternion(rotation))
+    mesh.receiveShadow = false
+    mesh.castShadow = true
     scene.add(mesh)
 
     mesh.userData.body = body
     return mesh
 }
 
-export const createPhysicsBox = ({ position, rotation, size, mass, renderMaterial, physicsMaterial }: { position: Vec3, rotation: Quaternion, size: Vec3, mass: number, renderMaterial?: Material, physicsMaterial?: CannonMaterial }) => {
+export const createPhysicsBox = ({ 
+    position, 
+    rotation, 
+    size, 
+    mass, 
+    colliders, 
+    renderMaterial, 
+    physicsMaterial 
+}: { 
+    position: Vec3, 
+    rotation: Quaternion, 
+    size: Vec3, 
+    mass: number, 
+    renderMaterial?: Material, 
+    colliders?: (
+        [Shape] | [Shape, Vec3, Quaternion]
+    )[]
+    physicsMaterial?: CannonMaterial 
+}) => {
     return createPhysicsMesh({
         geometry: new BoxGeometry(size.x * 2, size.y * 2, size.z * 2),
         position,
         rotation,
         renderMaterial,
         mass,
-        colliders: [
+        colliders: colliders ?? [
             [new Box(size)]
         ],
         physicsMaterial,
@@ -105,15 +125,32 @@ export const createPhysicsBox = ({ position, rotation, size, mass, renderMateria
 }
 
 export const addPlayer = (id: string, message: PositionPayload) => {
+    const floorDetector = new Box(new Vec3(.1, .1, .1))
+    floorDetector.collisionResponse = false
+
     const newPlayer = createPhysicsBox({
         position: positionMessageToVec3(message.position),
         rotation: rotationMessageToQuaternion(message.rotation),
         size: new Vec3(.5, .5, .5),
         mass: 10,
-        renderMaterial: new MeshBasicMaterial({ color: 0x00ff00 }),
+        renderMaterial: new MeshLambertMaterial({ color: 0x00ff00 }),
+        colliders: [
+            [new Box(new Vec3(.5, .5, .5))],
+            [floorDetector, new Vec3(0, -.1, 0), new Quaternion(0, 0, 0, 1)],
+        ],
         physicsMaterial: playerMaterial,
     });
     newPlayer.name = id;
+
+    newPlayer.userData.canJump = true
+    newPlayer.userData.body.addEventListener('collide', () => {
+        newPlayer.userData.canJump = true
+    })
+    newPlayer.userData.body.addEventListener('collideEnd', () => {
+        newPlayer.userData.canJump = false
+    })
+
+
     return newPlayer
 }
 
@@ -151,6 +188,8 @@ export const init = (canvas: HTMLCanvasElement) => {
     // Renderer
     renderer = new WebGLRenderer({ canvas });
     renderer.setSize(width, height);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = PCFSoftShadowMap
 
     // Scene
     scene = new Scene();
@@ -170,26 +209,47 @@ export const init = (canvas: HTMLCanvasElement) => {
     scene.add(camera)
 
     // Light
-    const light = new SpotLight(0xffffff, 1);
-    light.position.set(0, 1, 0);
+    const hemiLight = new HemisphereLight(0xffffff, 0xffffff, 0.9);
+    hemiLight.position.set(0, 10, 0);
+    scene.add(hemiLight);
+
+    const light = new DirectionalLight(0xffffff, 1);
+    light.castShadow = true
+
+    light.position.set(100, 100, 0);
+    light.target.position.set(-10, -20, 0);
+
+    const side = 50;
+    light.shadow.camera.top = side;
+    light.shadow.camera.bottom = -side;
+    light.shadow.camera.left = side;
+    light.shadow.camera.right = -side;
+
+    const mapSize = 512 * 10
+    light.shadow.mapSize.set(mapSize, mapSize);
+
     scene.add(light);
+
+    // const shadowHelper = new CameraHelper(light.shadow.camera);
+    // scene.add(shadowHelper);
 
     // Floor
     const floorTexture = new TextureLoader().load('assets/grass.jpg')
     floorTexture.wrapS = floorTexture.wrapT = RepeatWrapping
     floorTexture.repeat.set(8, 8)
     //*/
-    createPhysicsMesh({
+    const floor = createPhysicsMesh({
         geometry: new PlaneGeometry(100, 100),
         position: new Vec3(0, 0, 0),
         rotation: new Quaternion().setFromEuler(-Math.PI / 2, 0, 0),
-        renderMaterial: new MeshBasicMaterial({ map: floorTexture }),
+        renderMaterial: new MeshLambertMaterial({ map: floorTexture }),
         mass: 0,
         physicsMaterial: groundMaterial,
         colliders: [
             [new Plane()]
         ],
     })
+    floor.receiveShadow = true
     /*/
     createPhysicsBox({
         position: new Vec3(0, -1, 0),
