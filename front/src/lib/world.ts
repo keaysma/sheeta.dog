@@ -1,6 +1,6 @@
-import { Body, Box, Quaternion, Vec3, World, Material as CannonMaterial, ContactMaterial, Shape } from 'cannon-es';
+import { Body, Box, Quaternion, Vec3, World, Material as CannonMaterial, ContactMaterial, Shape, Plane, GSSolver } from 'cannon-es';
 import type { PositionPayload } from '../types/shared';
-import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Scene, SpotLight, Vector3, Quaternion as ThreeQuaternion, WebGLRenderer, Material, BufferGeometry, CubeTextureLoader, TextureLoader } from 'three';
+import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Scene, SpotLight, Vector3, Quaternion as ThreeQuaternion, WebGLRenderer, Material, BufferGeometry, CubeTextureLoader, TextureLoader, RepeatWrapping, PlaneGeometry, Euler } from 'three';
 
 export let renderer: WebGLRenderer;
 export let camera: PerspectiveCamera;
@@ -8,12 +8,12 @@ export let scene: Scene;
 export let player: Object3D;
 
 let world: World
-const groundMaterial = new CannonMaterial({ friction: 4 })
-const playerMaterial = new CannonMaterial({ friction: .1 })
+const groundMaterial = new CannonMaterial({ friction: 1, restitution: 0 })
+const playerMaterial = new CannonMaterial({ friction: 1, restitution: 0 })
 const contactGroundPlayer = new ContactMaterial(groundMaterial, playerMaterial, {
-    friction: 1,
-    frictionEquationStiffness: 100
-});
+    friction: 0,
+    restitution: 0,
+})
 
 let loop: boolean = true;
 
@@ -64,7 +64,7 @@ export const createPhysicsMesh = (
         renderMaterial?: Material,
         mass: number,
         colliders: (
-            [Shape] & Partial<[Shape, Vec3, Quaternion]>
+            [Shape] | [Shape, Vec3, Quaternion]
         )[],
         physicsMaterial?: CannonMaterial
     }
@@ -75,6 +75,8 @@ export const createPhysicsMesh = (
         quaternion: rotation,
         material: physicsMaterial,
     })
+    body.linearDamping = 0.99
+    body.angularDamping = 0.99
     colliders.forEach(([shape, offset, rotation]) => body.addShape(shape, offset, rotation))
     world.addBody(body)
 
@@ -106,9 +108,10 @@ export const addPlayer = (id: string, message: PositionPayload) => {
     const newPlayer = createPhysicsBox({
         position: positionMessageToVec3(message.position),
         rotation: rotationMessageToQuaternion(message.rotation),
-        size: new Vec3(1, 1, 1),
+        size: new Vec3(.5, .5, .5),
         mass: 10,
-        renderMaterial: new MeshBasicMaterial({ color: 0x00ff00 })
+        renderMaterial: new MeshBasicMaterial({ color: 0x00ff00 }),
+        physicsMaterial: playerMaterial,
     });
     newPlayer.name = id;
     return newPlayer
@@ -132,9 +135,17 @@ export const init = (canvas: HTMLCanvasElement) => {
 
     // World
     world = new World({
-        gravity: new Vec3(0, -10, 0),
-        frictionGravity: new Vec3(0, .1, 0),
+        gravity: new Vec3(0, -20, 0),
+        frictionGravity: new Vec3(0, -.01, 0),
     })
+    world.defaultContactMaterial.contactEquationStiffness = 1e9
+    world.defaultContactMaterial.contactEquationRelaxation = 4
+
+    const solver = new GSSolver()
+    solver.iterations = 7
+    solver.tolerance = 0.1
+    world.solver = solver
+
     world.addContactMaterial(contactGroundPlayer)
 
     // Renderer
@@ -164,31 +175,45 @@ export const init = (canvas: HTMLCanvasElement) => {
     scene.add(light);
 
     // Floor
-    const floor = createPhysicsBox({
+    const floorTexture = new TextureLoader().load('assets/grass.jpg')
+    floorTexture.wrapS = floorTexture.wrapT = RepeatWrapping
+    floorTexture.repeat.set(8, 8)
+    //*/
+    createPhysicsMesh({
+        geometry: new PlaneGeometry(100, 100),
+        position: new Vec3(0, 0, 0),
+        rotation: new Quaternion().setFromEuler(-Math.PI / 2, 0, 0),
+        renderMaterial: new MeshBasicMaterial({ map: floorTexture }),
+        mass: 0,
+        physicsMaterial: groundMaterial,
+        colliders: [
+            [new Plane()]
+        ],
+    })
+    /*/
+    createPhysicsBox({
         position: new Vec3(0, -1, 0),
         rotation: new Quaternion(0, 0, 0, 1),
         size: new Vec3(100, 1, 100),
         mass: 0,
-        renderMaterial: new MeshBasicMaterial({ color: 0x224422 }),
+        renderMaterial: new MeshBasicMaterial({ map: floorTexture }),
         physicsMaterial: groundMaterial
-    });
+    })
+    /*/
 
     // Dummy
-    const dummy = createPhysicsBox({
-        position: new Vec3(0, 5, -5),
-        rotation: new Quaternion(20, 40, 0, 1),
-        size: new Vec3(1, 1, 1),
-        mass: 1,
-    });
+    // createPhysicsBox({
+    //     position: new Vec3(0, 5, -5),
+    //     rotation: new Quaternion().setFromEuler(20, 40, 0),
+    //     size: new Vec3(1, 1, 1),
+    //     mass: 1,
+    //     physicsMaterial: playerMaterial,
+    // });
 
     // Player
-    player = createPhysicsBox({
-        position: new Vec3(0, 1, 0),
-        rotation: new Quaternion(0, 0, 0, 1),
-        size: new Vec3(.5, .5, .5),
-        mass: 10,
-        renderMaterial: new MeshBasicMaterial({ color: 0x00ff00 }),
-        physicsMaterial: playerMaterial
+    player = addPlayer('', {
+        position: new Vec3(0, 5, 0),
+        rotation: new Quaternion().setFromEuler(0, 0, 0),
     });
 
 

@@ -2,13 +2,13 @@
 	import * as mainScene from '$lib/world';
 	import * as connection from '$lib/connection';
 	import { onDestroy, onMount } from 'svelte';
-	import { ClientMessageType, type ClientPositionMessage } from '../../types/client';
 	import { Vec3, type Body } from 'cannon-es';
 
 	let canvas: HTMLCanvasElement;
+	let name: string;
 
-	let currentForce = 80;
-	let currentTorque = 60;
+	let currentForce = 100;
+	let currentTorque = 10;
 
 	let pressedKeys = new Set<string>();
 	let intervalIdKeyboard: number;
@@ -16,25 +16,56 @@
 		const playerBody: Body = mainScene.player.userData.body;
 
 		if (pressedKeys.has('w')) {
-			playerBody.applyLocalForce(new Vec3(0, 0, -currentTorque), new Vec3(0, 0, 0));
+			playerBody.applyLocalForce(new Vec3(0, 0, -currentForce), new Vec3(0, 0, 0));
+			// playerBody.applyLocalImpulse(new Vec3(0, 0, -1), new Vec3(0, 0, -1));
+			// playerBody.velocity.z = -10
 		}
 
 		if (pressedKeys.has('a')) {
-			playerBody.applyTorque(new Vec3(0, currentForce, 0))
+			playerBody.applyTorque(new Vec3(0, currentTorque, 0))
 		}
 
 		if (pressedKeys.has('s')) {
-			playerBody.applyLocalForce(new Vec3(0, 0, currentTorque), new Vec3(0, 0, 0));
+			playerBody.applyLocalForce(new Vec3(0, 0, currentForce), new Vec3(0, 0, 1));
 		}
 
 		if (pressedKeys.has('d')) {
-			playerBody.applyTorque(new Vec3(0, -currentForce, 0))
+			playerBody.applyTorque(new Vec3(0, -currentTorque, 0))
 		}
-	}, 10);
+	}, 1);
 
 	onMount(() => {
+		name = (new URLSearchParams(window.location.search)).get('name') ?? 'sheeta';
+
 		mainScene.init(canvas);
 		connection.init();
+
+		if (name === '__physics_test'){
+			(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 2000));
+				
+				pressedKeys.add('w');
+				// await new Promise((resolve) => setTimeout(resolve, 3000));
+				await new Promise((resolve) => setTimeout(resolve, 1000));
+				
+				pressedKeys.delete('w');
+				// await new Promise((resolve) => setTimeout(resolve, 3000));
+
+				// pressedKeys.add('a');
+				// await new Promise((resolve) => setTimeout(resolve, 500));
+				
+				// pressedKeys.delete('a');
+				// await new Promise((resolve) => setTimeout(resolve, 2000));
+
+				// pressedKeys.add('s');
+				// pressedKeys.add('d');
+				// await new Promise((resolve) => setTimeout(resolve, 1000));
+				
+				// pressedKeys.delete('d');
+				// await new Promise((resolve) => setTimeout(resolve, 3000));
+				// pressedKeys.delete('s');
+			})()
+		}
 	});
 
 	onDestroy(() => {
