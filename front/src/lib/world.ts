@@ -1,6 +1,9 @@
 import { Body, Box, Quaternion, Vec3, World, Material as CannonMaterial, ContactMaterial, Shape, Plane, GSSolver } from 'cannon-es';
 import type { PositionPayload } from '../types/shared';
-import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Scene, SpotLight, Vector3, Quaternion as ThreeQuaternion, WebGLRenderer, Material, BufferGeometry, CubeTextureLoader, TextureLoader, RepeatWrapping, PlaneGeometry, Euler, DirectionalLight, HemisphereLight, MeshLambertMaterial, PCFSoftShadowMap, CameraHelper, VSMShadowMap, PCFShadowMap } from 'three';
+import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Scene, SpotLight, Vector3, Quaternion as ThreeQuaternion, WebGLRenderer, Material, BufferGeometry, CubeTextureLoader, TextureLoader, RepeatWrapping, PlaneGeometry, Euler, DirectionalLight, HemisphereLight, MeshLambertMaterial, PCFSoftShadowMap, CameraHelper, VSMShadowMap, PCFShadowMap, Group } from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+
+let shadows = false
 
 export let renderer: WebGLRenderer;
 export let camera: PerspectiveCamera;
@@ -48,6 +51,41 @@ const animate = () => {
     requestAnimationFrame(animate);
 }
 
+export const addPhysicsBodyToMesh = ({
+    mesh,
+    position,
+    rotation,
+    mass,
+    colliders,
+    physicsMaterial
+
+}: {
+    mesh: Mesh | Group,
+    position: Vec3,
+    rotation: Quaternion,
+    mass: number,
+    colliders: (
+        [Shape] | [Shape, Vec3, Quaternion]
+    )[],
+    physicsMaterial?: CannonMaterial
+}) => {
+    const body = new Body({
+        mass,
+        position,
+        quaternion: rotation,
+        material: physicsMaterial,
+    })
+    body.linearDamping = 0.99
+    body.angularDamping = 0.99
+
+    body.linearFactor.set(1, 1, 1)
+    body.angularFactor.set(0, 1, 0)
+
+    colliders.forEach(([shape, offset, rotation]) => body.addShape(shape, offset, rotation))
+    world.addBody(body)
+    mesh.userData.body = body
+}
+
 export const createPhysicsMesh = (
     {
         geometry,
@@ -69,51 +107,48 @@ export const createPhysicsMesh = (
         physicsMaterial?: CannonMaterial
     }
 ) => {
-    const body = new Body({
-        mass,
-        position,
-        quaternion: rotation,
-        material: physicsMaterial,
-    })
-    body.linearDamping = 0.99
-    body.angularDamping = 0.99
-    
-    body.linearFactor.set(1, 1, 1)
-    body.angularFactor.set(0, 1, 0)
-
-    colliders.forEach(([shape, offset, rotation]) => body.addShape(shape, offset, rotation))
-    world.addBody(body)
-
     const meshMaterial = renderMaterial ?? new MeshBasicMaterial({ color: 0xff0000 })
     const mesh = new Mesh(geometry, meshMaterial)
     mesh.position.copy(translateVector3(position))
     mesh.quaternion.copy(translateQuaternion(rotation))
-    mesh.receiveShadow = false
-    mesh.castShadow = true
+
+    if (shadows) {
+        mesh.receiveShadow = false
+        mesh.castShadow = true
+    }
+
     scene.add(mesh)
 
-    mesh.userData.body = body
+    addPhysicsBodyToMesh({
+        mesh,
+        position,
+        rotation,
+        mass,
+        colliders,
+        physicsMaterial
+    })
+
     return mesh
 }
 
-export const createPhysicsBox = ({ 
-    position, 
-    rotation, 
-    size, 
-    mass, 
-    colliders, 
-    renderMaterial, 
-    physicsMaterial 
-}: { 
-    position: Vec3, 
-    rotation: Quaternion, 
-    size: Vec3, 
-    mass: number, 
-    renderMaterial?: Material, 
+export const createPhysicsBox = ({
+    position,
+    rotation,
+    size,
+    mass,
+    colliders,
+    renderMaterial,
+    physicsMaterial
+}: {
+    position: Vec3,
+    rotation: Quaternion,
+    size: Vec3,
+    mass: number,
+    renderMaterial?: Material,
     colliders?: (
         [Shape] | [Shape, Vec3, Quaternion]
     )[]
-    physicsMaterial?: CannonMaterial 
+    physicsMaterial?: CannonMaterial
 }) => {
     return createPhysicsMesh({
         geometry: new BoxGeometry(size.x * 2, size.y * 2, size.z * 2),
@@ -192,7 +227,8 @@ export const init = (canvas: HTMLCanvasElement) => {
     // Renderer
     renderer = new WebGLRenderer({ canvas });
     renderer.setSize(width, height);
-    renderer.shadowMap.enabled = true;
+
+    renderer.shadowMap.enabled = shadows
     renderer.shadowMap.type = PCFSoftShadowMap
 
     // Scene
@@ -218,19 +254,22 @@ export const init = (canvas: HTMLCanvasElement) => {
     scene.add(hemiLight);
 
     const light = new DirectionalLight(0xffffff, 1);
-    light.castShadow = true
 
     light.position.set(100, 100, 0);
     light.target.position.set(-10, -20, 0);
 
-    const side = 50;
-    light.shadow.camera.top = side;
-    light.shadow.camera.bottom = -side;
-    light.shadow.camera.left = side;
-    light.shadow.camera.right = -side;
+    light.castShadow = shadows
 
-    const mapSize = 512 * 10
-    light.shadow.mapSize.set(mapSize, mapSize);
+    if (shadows) {
+        const side = 50;
+        light.shadow.camera.top = side;
+        light.shadow.camera.bottom = -side;
+        light.shadow.camera.left = side;
+        light.shadow.camera.right = -side;
+
+        const mapSize = 512 * 10
+        light.shadow.mapSize.set(mapSize, mapSize);
+    }
 
     scene.add(light);
 
@@ -265,14 +304,51 @@ export const init = (canvas: HTMLCanvasElement) => {
     })
     /*/
 
-    // Dummy
-    // createPhysicsBox({
-    //     position: new Vec3(0, 5, -5),
-    //     rotation: new Quaternion().setFromEuler(20, 40, 0),
-    //     size: new Vec3(1, 1, 1),
-    //     mass: 1,
-    //     physicsMaterial: playerMaterial,
-    // });
+    // Couch
+    const couchLoader = new GLTFLoader()
+    const couchTexture = new TextureLoader().load('assets/Sofa202_Diffuse.jpg')
+    couchLoader.load('assets/Sofa202.gltf', (gltf) => {
+        gltf.scene.scale.set(5, 5, 5)
+        gltf.scene.traverse(
+            function (child: Object3D | Mesh) {
+                if ('isMesh' in child && child.isMesh) {
+                    child.material = new MeshLambertMaterial({ map: couchTexture })
+                    child.castShadow = shadows
+                    child.receiveShadow = shadows
+                }
+            }
+        )
+
+        const colliders = [
+            [new Box(new Vec3(4.415, 1.35, 1.475)), new Vec3(), new Quaternion()],
+            [new Box(new Vec3(.115, 2.15, 1.475)), new Vec3(4, 0, 0), new Quaternion()],
+            [new Box(new Vec3(.115, 2.15, 1.475)), new Vec3(-4, 0, 0), new Quaternion()],
+            [new Box(new Vec3(4.415, 2.15, .275)), new Vec3(0, 0, -1.2), new Quaternion()],
+        ] as [Box, Vec3, Quaternion][]
+
+        const setsPositionRotation = [
+            {
+                position: new Vec3(0, 0, -15),
+                rotation: new Quaternion().setFromEuler(0, 270, 0)
+            },
+            {
+                position: new Vec3(0, 0, 15),
+                rotation: new Quaternion().setFromEuler(0, 22, 0)
+            }
+        ]
+        setsPositionRotation.forEach(({ position, rotation }) => {
+            const mesh = gltf.scene.clone()
+            addPhysicsBodyToMesh({
+                mesh,
+                position,
+                rotation,
+                colliders,
+                mass: 0,
+                physicsMaterial: groundMaterial,
+            })
+            scene.add(mesh)
+        })
+    })
 
     // Player
     player = addPlayer('', {
