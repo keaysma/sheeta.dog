@@ -77,6 +77,10 @@ export const createPhysicsMesh = (
     })
     body.linearDamping = 0.99
     body.angularDamping = 0.99
+    
+    body.linearFactor.set(1, 1, 1)
+    body.angularFactor.set(0, 1, 0)
+
     colliders.forEach(([shape, offset, rotation]) => body.addShape(shape, offset, rotation))
     world.addBody(body)
 
@@ -172,7 +176,7 @@ export const init = (canvas: HTMLCanvasElement) => {
 
     // World
     world = new World({
-        gravity: new Vec3(0, -20, 0),
+        gravity: new Vec3(0, -30, 0),
         frictionGravity: new Vec3(0, -.01, 0),
     })
     world.defaultContactMaterial.contactEquationStiffness = 1e9

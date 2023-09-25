@@ -38,10 +38,10 @@
 			mainScene.player.userData.canJump = false;
 		}
 
-		if (pressedKeys.has('z')){
-			playerBody.quaternion.setFromEuler(0, 0, 0)
-			mainScene.player.userData.canJump = true;
-		}
+		// if (pressedKeys.has('z')){
+		// 	playerBody.quaternion.setFromEuler(0, 0, 0)
+		// 	mainScene.player.userData.canJump = true;
+		// }
 	}, 1);
 
 	onMount(() => {
