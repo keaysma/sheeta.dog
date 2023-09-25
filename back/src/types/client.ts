@@ -4,6 +4,7 @@ import type { PositionPayload } from "./shared";
 export enum ClientMessageType {
     Ping = 'ping',
     Position = 'position',
+    Woof = 'woof',
 }
 
 export interface BaseClientMessage {
@@ -18,4 +19,8 @@ export interface ClientPositionMessage extends BaseClientMessage, PositionPayloa
     type: ClientMessageType.Position;
 }
 
-export type ClientMessage = ClientPingMessage | ClientPositionMessage;
+export interface ClientWoofMessage extends BaseClientMessage {
+    type: ClientMessageType.Woof;
+}
+
+export type ClientMessage = ClientPingMessage | ClientPositionMessage | ClientWoofMessage;

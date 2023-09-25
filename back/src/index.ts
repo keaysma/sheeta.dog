@@ -1,5 +1,5 @@
 import { ClientMessage, ClientMessageType } from "./types/client";
-import { ServerIdentifyMessage, ServerJoinedMessage, ServerLeftMessage, ServerMessage, ServerMessageType, ServerUpdateMessage } from "./types/server";
+import { ServerIdentifyMessage, ServerJoinedMessage, ServerLeftMessage, ServerMessage, ServerMessageType, ServerUpdateMessage, ServerWoofMessage } from "./types/server";
 import { WorldState } from "./types/shared";
 import { ServerWebSocket } from "bun";
 
@@ -107,6 +107,13 @@ Bun.serve<{ id: string }>({
                         message,
                     }
                     publish(response);
+                    break;
+                case ClientMessageType.Woof:
+                    const woof: ServerWoofMessage = {
+                        type: ServerMessageType.Woof,
+                        id,
+                    }
+                    publish(woof);
                     break;
                 case ClientMessageType.Ping:
                     break;
