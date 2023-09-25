@@ -8,13 +8,16 @@
 	let canvas: HTMLCanvasElement;
 	let name: string;
 
-	let currentForce = 100;
-	let currentTorque = 10;
+	let baseForce = 100;
+	let baseTorque = 10;
 
 	let pressedKeys = new Set<string>();
 	let intervalIdKeyboard: number;
 	intervalIdKeyboard = setInterval(() => {
 		const playerBody: Body = mainScene.player.userData.body;
+
+		const currentForce = baseForce * (pressedKeys.has('shift') ? 2 : 1);
+		const currentTorque = baseTorque * (pressedKeys.has('shift') ? 0.25 : 1);
 
 		if (pressedKeys.has('w')) {
 			playerBody.applyLocalForce(new Vec3(0, 0, -currentForce), new Vec3(0, 0, 0));
@@ -35,7 +38,7 @@
 		}
 
 		if (pressedKeys.has(' ') && mainScene.player.userData.canJump) {
-			playerBody.applyLocalForce(new Vec3(0, 150 * currentForce, 0), new Vec3(0, 0, 0));
+			playerBody.applyLocalForce(new Vec3(0, 150 * baseForce, 0), new Vec3(0, 0, 0));
 			mainScene.player.userData.canJump = false;
 		}
 
@@ -91,10 +94,10 @@
 		if (event.key === 'b') {
 			connection.woof();
 		} else {
-			pressedKeys.add(event.key);
+			pressedKeys.add(event.key.toLowerCase());
 		}
 	}}
-	on:keyup={(event) => pressedKeys.delete(event.key)}
+	on:keyup={(event) => pressedKeys.delete(event.key.toLowerCase())}
 	on:blur={() => pressedKeys.clear()}
 	on:resize={() => {
 		mainScene.camera.aspect = window.innerWidth / window.innerHeight;

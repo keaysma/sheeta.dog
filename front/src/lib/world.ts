@@ -54,6 +54,7 @@ const animate = () => {
 
 export const addAudioToObject = (object: Object3D, audioFilePath: string) => {
     const sound = new PositionalAudio(listener);
+    sound.setRefDistance(0.2)
     object.add(sound);
 
     const audioLoader = new AudioLoader();
@@ -292,7 +293,7 @@ export const init = (canvas: HTMLCanvasElement) => {
     // Floor
     const floorTexture = new TextureLoader().load('assets/grass.jpg')
     floorTexture.wrapS = floorTexture.wrapT = RepeatWrapping
-    floorTexture.repeat.set(8, 8)
+    floorTexture.repeat.set(10, 10)
     //*/
     const floor = createPhysicsMesh({
         geometry: new PlaneGeometry(100, 100),
@@ -307,15 +308,17 @@ export const init = (canvas: HTMLCanvasElement) => {
     })
     floor.receiveShadow = true
     /*/
-    createPhysicsBox({
-        position: new Vec3(0, -1, 0),
+    const floor = createPhysicsBox({
+        position: new Vec3(0, -.1, 0),
         rotation: new Quaternion(0, 0, 0, 1),
-        size: new Vec3(100, 1, 100),
+        size: new Vec3(100, .1, 100),
         mass: 0,
         renderMaterial: new MeshBasicMaterial({ map: floorTexture }),
         physicsMaterial: groundMaterial
     })
-    /*/
+    floor.castShadow = true
+    floor.receiveShadow = true
+    //*/
 
     // Couch
     const couchLoader = new GLTFLoader()

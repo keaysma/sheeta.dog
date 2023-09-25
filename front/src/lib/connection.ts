@@ -54,10 +54,6 @@ function onMessage(message: MessageEvent<string>) {
             // }
             break;
         case ServerMessageType.Woof:
-            console.log('woof');
-            // const audio = new Audio(WOOF_AUDIO_FILE_PATHS[Math.floor(Math.random() * WOOF_AUDIO_FILE_PATHS.length)]);
-            // audio.play()
-
             const woofPlayer = scene.getObjectByName(data.id);
             if (woofPlayer) {
                 addAudioToObject(
