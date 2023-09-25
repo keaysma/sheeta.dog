@@ -1,6 +1,6 @@
 import { Body, Box, Quaternion, Vec3, World, Material as CannonMaterial, ContactMaterial, Shape, Plane, GSSolver } from 'cannon-es';
 import type { PositionPayload } from '../types/shared';
-import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Scene, SpotLight, Vector3, Quaternion as ThreeQuaternion, WebGLRenderer, Material, BufferGeometry, CubeTextureLoader, TextureLoader, RepeatWrapping, PlaneGeometry, Euler, DirectionalLight, HemisphereLight, MeshLambertMaterial, PCFSoftShadowMap, CameraHelper, VSMShadowMap, PCFShadowMap, Group } from 'three';
+import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Scene, SpotLight, Vector3, Quaternion as ThreeQuaternion, WebGLRenderer, Material, BufferGeometry, CubeTextureLoader, TextureLoader, RepeatWrapping, PlaneGeometry, Euler, DirectionalLight, HemisphereLight, MeshLambertMaterial, PCFSoftShadowMap, CameraHelper, VSMShadowMap, PCFShadowMap, Group, AudioListener, AudioLoader, PositionalAudio } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
 let shadows = false
@@ -9,6 +9,7 @@ export let renderer: WebGLRenderer;
 export let camera: PerspectiveCamera;
 export let scene: Scene;
 export let player: Object3D;
+export let listener: AudioListener;
 
 let world: World
 const groundMaterial = new CannonMaterial({ friction: 1, restitution: 0 })
@@ -49,6 +50,18 @@ const animate = () => {
 
     renderer.render(scene, camera);
     requestAnimationFrame(animate);
+}
+
+export const addAudioAtPosition = (position: Vector3, audioFilePath: string) => {
+    const sound = new PositionalAudio(listener);
+    sound.position.copy(position);
+
+    const audioLoader = new AudioLoader();
+    audioLoader.load(audioFilePath, (buffer) => {
+        sound.setBuffer(buffer);
+        sound.setRefDistance(20);
+        sound.play();
+    });
 }
 
 export const addPhysicsBodyToMesh = ({
@@ -356,8 +369,12 @@ export const init = (canvas: HTMLCanvasElement) => {
         rotation: new Quaternion().setFromEuler(0, 0, 0),
     });
 
+    // Player Audio
+    listener = new AudioListener();
+    camera.add(listener);
 
 
+    // Player Camera
     player.add(camera);
     camera.position.set(0, 2, 5);
     camera.rotation.set(-0.15, 0, 0);

@@ -1,5 +1,5 @@
 import { ServerMessageType, type ServerMessage } from "../types/server";
-import { addPlayer, player, scene, updatePlayer } from "./world";
+import { addAudioAtPosition, addPlayer, player, scene, updatePlayer } from "./world";
 import { ClientMessageType, type ClientPingMessage, type ClientPositionMessage, type ClientWoofMessage } from "../types/client";
 import type { Body } from "cannon-es";
 import { WOOF_AUDIO_FILE_PATHS } from "./consts";
@@ -55,8 +55,16 @@ function onMessage(message: MessageEvent<string>) {
             break;
         case ServerMessageType.Woof:
             console.log('woof');
-            const audio = new Audio(WOOF_AUDIO_FILE_PATHS[Math.floor(Math.random() * WOOF_AUDIO_FILE_PATHS.length)]);
-            audio.play()
+            // const audio = new Audio(WOOF_AUDIO_FILE_PATHS[Math.floor(Math.random() * WOOF_AUDIO_FILE_PATHS.length)]);
+            // audio.play()
+
+            const woofPlayer = scene.getObjectByName(data.id);
+            if (woofPlayer) {
+                addAudioAtPosition(
+                    woofPlayer.position,
+                    WOOF_AUDIO_FILE_PATHS[Math.floor(Math.random() * WOOF_AUDIO_FILE_PATHS.length)]
+                )
+            }
             break;
         case ServerMessageType.Left:
             const leavingPlayer = scene.getObjectByName(data.id);
