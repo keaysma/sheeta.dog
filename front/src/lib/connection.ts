@@ -1,12 +1,19 @@
 import { ServerMessageType, type ServerMessage } from "../types/server";
 import { addPlayer, player, scene, updatePlayer } from "./world";
-import { ClientMessageType, type ClientPingMessage, type ClientPositionMessage } from "../types/client";
+import { ClientMessageType, type ClientPingMessage, type ClientPositionMessage, type ClientWoofMessage } from "../types/client";
 import type { Body } from "cannon-es";
 
 export let server: WebSocket;
 let terminated: boolean = false;
 let pingIntervalId: number;
 let updateIntervalId: number;
+
+export function woof() {
+    const message: ClientWoofMessage = {
+        type: ClientMessageType.Woof
+    };
+    server.send(JSON.stringify(message));
+}
 
 function onMessage(message: MessageEvent<string>) {
     const data: ServerMessage = JSON.parse(message.data);
@@ -44,6 +51,9 @@ function onMessage(message: MessageEvent<string>) {
             // else {
             // 	addPlayer(data.id, data.message);
             // }
+            break;
+        case ServerMessageType.Woof:
+            console.log('woof');
             break;
         case ServerMessageType.Left:
             const leavingPlayer = scene.getObjectByName(data.id);

@@ -3,6 +3,7 @@
 	import * as connection from '$lib/connection';
 	import { onDestroy, onMount } from 'svelte';
 	import { Vec3, type Body } from 'cannon-es';
+	import { Raycaster, Vector3 } from 'three';
 
 	let canvas: HTMLCanvasElement;
 	let name: string;
@@ -22,7 +23,7 @@
 		}
 
 		if (pressedKeys.has('a')) {
-			playerBody.applyTorque(new Vec3(0, currentTorque, 0))
+			playerBody.applyTorque(new Vec3(0, currentTorque, 0));
 		}
 
 		if (pressedKeys.has('s')) {
@@ -30,11 +31,11 @@
 		}
 
 		if (pressedKeys.has('d')) {
-			playerBody.applyTorque(new Vec3(0, -currentTorque, 0))
+			playerBody.applyTorque(new Vec3(0, -currentTorque, 0));
 		}
 
 		if (pressedKeys.has(' ') && mainScene.player.userData.canJump) {
-			playerBody.applyLocalForce(new Vec3(0, 150*currentForce, 0), new Vec3(0, 0, 0));
+			playerBody.applyLocalForce(new Vec3(0, 150 * currentForce, 0), new Vec3(0, 0, 0));
 			mainScene.player.userData.canJump = false;
 		}
 
@@ -45,48 +46,54 @@
 	}, 1);
 
 	onMount(() => {
-		name = (new URLSearchParams(window.location.search)).get('name') ?? 'sheeta';
+		name = new URLSearchParams(window.location.search).get('name') ?? 'sheeta';
 
 		mainScene.init(canvas);
 		connection.init();
 
-		if (name === '__physics_test'){
+		if (name === '__physics_test') {
 			(async () => {
 				await new Promise((resolve) => setTimeout(resolve, 2000));
-				
+
 				pressedKeys.add('w');
 				// await new Promise((resolve) => setTimeout(resolve, 3000));
 				await new Promise((resolve) => setTimeout(resolve, 1000));
-				
+
 				pressedKeys.delete('w');
 				// await new Promise((resolve) => setTimeout(resolve, 3000));
 
 				// pressedKeys.add('a');
 				// await new Promise((resolve) => setTimeout(resolve, 500));
-				
+
 				// pressedKeys.delete('a');
 				// await new Promise((resolve) => setTimeout(resolve, 2000));
 
 				// pressedKeys.add('s');
 				// pressedKeys.add('d');
 				// await new Promise((resolve) => setTimeout(resolve, 1000));
-				
+
 				// pressedKeys.delete('d');
 				// await new Promise((resolve) => setTimeout(resolve, 3000));
 				// pressedKeys.delete('s');
-			})()
+			})();
 		}
 	});
 
 	onDestroy(() => {
 		clearInterval(intervalIdKeyboard);
-        connection.terminateServer();
-        mainScene.renderer?.dispose();
+		connection.terminateServer();
+		mainScene.renderer?.dispose();
 	});
 </script>
 
 <svelte:window
-	on:keydown={(event) => pressedKeys.add(event.key)}
+	on:keydown={(event) => {
+		if (event.key === 'b') {
+			connection.woof();
+		} else {
+			pressedKeys.add(event.key);
+		}
+	}}
 	on:keyup={(event) => pressedKeys.delete(event.key)}
 	on:blur={() => pressedKeys.clear()}
 	on:resize={() => {

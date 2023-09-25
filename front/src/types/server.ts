@@ -5,6 +5,7 @@ export enum ServerMessageType {
     Joined = 'joined',
     Left = 'left',
     Identify = 'you are',
+    Woof = 'woof',
 }
 
 export interface BaseServerMessage {
@@ -34,4 +35,9 @@ export interface ServerIdentifyMessage extends BaseServerMessage {
     worldState: WorldState;
 }
 
-export type ServerMessage = ServerUpdateMessage | ServerJoinedMessage | ServerLeftMessage | ServerIdentifyMessage;
+export interface ServerWoofMessage extends BaseServerMessage {
+    type: ServerMessageType.Woof;
+    id: string;
+}
+
+export type ServerMessage = ServerUpdateMessage | ServerJoinedMessage | ServerLeftMessage | ServerIdentifyMessage | ServerWoofMessage;
