@@ -52,9 +52,9 @@ const animate = () => {
     requestAnimationFrame(animate);
 }
 
-export const addAudioAtPosition = (position: Vector3, audioFilePath: string) => {
+export const addAudioToObject = (object: Object3D, audioFilePath: string) => {
     const sound = new PositionalAudio(listener);
-    sound.position.copy(position);
+    object.add(sound);
 
     const audioLoader = new AudioLoader();
     audioLoader.load(audioFilePath, (buffer) => {

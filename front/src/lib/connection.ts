@@ -1,5 +1,5 @@
 import { ServerMessageType, type ServerMessage } from "../types/server";
-import { addAudioAtPosition, addPlayer, player, scene, updatePlayer } from "./world";
+import { addAudioToObject, addPlayer, player, scene, updatePlayer } from "./world";
 import { ClientMessageType, type ClientPingMessage, type ClientPositionMessage, type ClientWoofMessage } from "../types/client";
 import type { Body } from "cannon-es";
 import { WOOF_AUDIO_FILE_PATHS } from "./consts";
@@ -60,8 +60,8 @@ function onMessage(message: MessageEvent<string>) {
 
             const woofPlayer = scene.getObjectByName(data.id);
             if (woofPlayer) {
-                addAudioAtPosition(
-                    woofPlayer.position,
+                addAudioToObject(
+                    woofPlayer,
                     WOOF_AUDIO_FILE_PATHS[Math.floor(Math.random() * WOOF_AUDIO_FILE_PATHS.length)]
                 )
             }
