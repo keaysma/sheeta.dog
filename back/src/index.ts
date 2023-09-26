@@ -122,7 +122,7 @@ Bun.serve<{ id: string }>({
             }
         },
         close(ws, code, reason) {
-            console.log('Client disconnected', ws, code, reason);
+            // console.log('Client disconnected', ws, code, reason);
             const { id } = ws.data;
 
             delete STATE[id];
@@ -137,3 +137,5 @@ Bun.serve<{ id: string }>({
         },
     },
 })
+
+console.log('Server started on port 3000')
