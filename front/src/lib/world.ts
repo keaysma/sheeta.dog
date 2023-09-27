@@ -19,6 +19,26 @@ const contactGroundPlayer = new ContactMaterial(groundMaterial, playerMaterial, 
     restitution: 0,
 })
 
+let playerModel: Group
+
+export const loadPlayerModel = async () => {
+    const playerModelLoader = new GLTFLoader()
+    playerModel = await new Promise<Group>((res) => {
+        playerModelLoader.load('assets/frenchie.glb', (model) => {
+            model.scene.traverse(
+                function (child: Object3D | Mesh) {
+                    if ('isMesh' in child && child.isMesh) {
+                        child.material = new MeshLambertMaterial({ color: 0xdd00ff })
+                        child.castShadow = shadows
+                        child.receiveShadow = shadows
+                    }
+                }
+            )
+            res(model.scene)
+        })
+    })
+}
+
 let loop: boolean = true;
 
 const positionMessageToVec3 = (position: PositionPayload['position']): Vec3 =>
@@ -74,7 +94,7 @@ export const addPhysicsBodyToMesh = ({
     physicsMaterial
 
 }: {
-    mesh: Mesh | Group,
+    mesh: Object3D,
     position: Vec3,
     rotation: Quaternion,
     mass: number,
@@ -181,18 +201,24 @@ export const addPlayer = (id: string, message: PositionPayload) => {
     const floorDetector = new Box(new Vec3(.1, .1, .1))
     floorDetector.collisionResponse = false
 
-    const newPlayer = createPhysicsBox({
-        position: positionMessageToVec3(message.position),
-        rotation: rotationMessageToQuaternion(message.rotation),
-        size: new Vec3(.5, .5, .5),
-        mass: 10,
-        renderMaterial: new MeshLambertMaterial({ color: 0x00ff00 }),
+    const position = positionMessageToVec3(message.position)
+    const rotation = rotationMessageToQuaternion(message.rotation)
+
+    const newPlayer = playerModel.clone()
+    newPlayer.scale.set(.15, .15, .15)
+    scene.add(newPlayer)
+    
+    addPhysicsBodyToMesh({
+        mesh: newPlayer,
+        position,
+        rotation,
         colliders: [
-            [new Box(new Vec3(.5, .5, .5))],
-            [floorDetector, new Vec3(0, -.1, 0), new Quaternion(0, 0, 0, 1)],
+            [new Box(new Vec3(.25, .45, .5))],
+            [floorDetector, new Vec3(0, -.45, 0), new Quaternion()]
         ],
-        physicsMaterial: playerMaterial,
-    });
+        mass: 10,
+    })
+
     newPlayer.name = id;
 
     newPlayer.userData.canJump = true
@@ -307,18 +333,6 @@ export const init = (canvas: HTMLCanvasElement) => {
         ],
     })
     floor.receiveShadow = true
-    /*/
-    const floor = createPhysicsBox({
-        position: new Vec3(0, -.1, 0),
-        rotation: new Quaternion(0, 0, 0, 1),
-        size: new Vec3(100, .1, 100),
-        mass: 0,
-        renderMaterial: new MeshBasicMaterial({ map: floorTexture }),
-        physicsMaterial: groundMaterial
-    })
-    floor.castShadow = true
-    floor.receiveShadow = true
-    //*/
 
     // Couch
     const couchLoader = new GLTFLoader()
@@ -370,17 +384,16 @@ export const init = (canvas: HTMLCanvasElement) => {
     player = addPlayer('', {
         position: new Vec3(0, 5, 0),
         rotation: new Quaternion().setFromEuler(0, 0, 0),
-    });
+    })
+
+    // Player Camera
+    player.add(camera);
+    camera.position.set(0, 10, 20);
+    camera.rotation.set(-0.15, 0, 0);
 
     // Player Audio
     listener = new AudioListener();
     camera.add(listener);
-
-
-    // Player Camera
-    player.add(camera);
-    camera.position.set(0, 2, 5);
-    camera.rotation.set(-0.15, 0, 0);
 
     // Animate
     animate();

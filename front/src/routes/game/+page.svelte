@@ -14,6 +14,7 @@
 	let pressedKeys = new Set<string>();
 	let intervalIdKeyboard: number;
 	intervalIdKeyboard = setInterval(() => {
+		if (!mainScene.player) return;
 		const playerBody: Body = mainScene.player.userData.body;
 
 		const currentForce = baseForce * (pressedKeys.has('shift') ? 2 : 1);
@@ -48,8 +49,10 @@
 		// }
 	}, 1);
 
-	onMount(() => {
+	onMount(async () => {
 		name = new URLSearchParams(window.location.search).get('name') ?? 'sheeta';
+
+		await mainScene.loadPlayerModel();
 
 		mainScene.init(canvas);
 		connection.init();

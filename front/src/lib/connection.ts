@@ -1,13 +1,13 @@
 import { ServerMessageType, type ServerMessage } from "../types/server";
 import { addAudioToObject, addPlayer, player, scene, updatePlayer } from "./world";
 import { ClientMessageType, type ClientPingMessage, type ClientPositionMessage, type ClientWoofMessage } from "../types/client";
-import type { Body } from "cannon-es";
+import { Vec3, type Body } from "cannon-es";
 import { WOOF_AUDIO_FILE_PATHS } from "./consts";
 
 export let server: WebSocket;
 let terminated: boolean = false;
-let pingIntervalId: number;
 let updateIntervalId: number;
+let staticUpdateIntervalId: number;
 
 export function woof() {
     const message: ClientWoofMessage = {
@@ -71,44 +71,43 @@ function onMessage(message: MessageEvent<string>) {
     }
 }
 
-function pingLoop() {
-    if (server && server.readyState === server.OPEN) {
-        const message: ClientPingMessage = {
-            type: ClientMessageType.Ping
-        };
-        server.send(JSON.stringify(message));
-    }
+function sendPositionUpdate () {
+    const message: ClientPositionMessage = {
+        type: ClientMessageType.Position,
+        position: player.position,
+        rotation: {
+            x: player.quaternion.x,
+            y: player.quaternion.y,
+            z: player.quaternion.z,
+            w: player.quaternion.w
+        }
+    };
+    server.send(JSON.stringify(message));
 }
 
 function updateLoop() {
+    if(!player) return;
     const playerBody: Body = player.userData.body;
 
+    const movementThreshold = 0.01;
+    const hasVelocity = playerBody.velocity.distanceTo(new Vec3(0, 0, 0)) > movementThreshold;
+    const hasRotated = playerBody.angularVelocity.distanceTo(new Vec3(0, 0, 0)) > movementThreshold;
+
     if (
-        !playerBody.velocity.isZero() ||
-        !playerBody.angularVelocity.isZero()
+        hasVelocity || hasRotated
     ) {
-        const message: ClientPositionMessage = {
-            type: ClientMessageType.Position,
-            position: player.position,
-            rotation: {
-                x: player.quaternion.x,
-                y: player.quaternion.y,
-                z: player.quaternion.z,
-                w: player.quaternion.w
-            }
-        };
-        server.send(JSON.stringify(message));
+        sendPositionUpdate();
     }
 }
 
 function onOpen() {
-    pingIntervalId = setInterval(pingLoop, 5_000)
-    updateIntervalId = setInterval(updateLoop, 5)
+    updateIntervalId = setInterval(updateLoop, 20)
+    staticUpdateIntervalId = setInterval(sendPositionUpdate, 1_000)
 }
 
 function onClose() {
     clearInterval(updateIntervalId)
-    clearInterval(pingIntervalId)
+    clearInterval(staticUpdateIntervalId)
 
     if (!terminated)
         setTimeout(() => {
