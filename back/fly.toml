@@ -1,28 +1,32 @@
-# fly.toml file generated for sheeta-dog-back on 2023-09-25T19:52:53-04:00
+# fly.toml app configuration file generated for sheeta-dog on 2023-09-26T22:13:40-04:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-app = "sheeta-dog-back"
+app = "sheeta-dog"
+primary_region = "iad"
 kill_signal = "SIGINT"
-kill_timeout = 5
-mounts = []
-processes = []
+kill_timeout = "5s"
+
+[build]
 
 [env]
   PORT = "3000"
 
 [[services]]
+  protocol = "tcp"
   internal_port = 3000
   processes = ["app"]
-  protocol = "tcp"
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
   [services.concurrency]
+    type = "connections"
     hard_limit = 25
     soft_limit = 20
-    type = "connections"
-
-  [[services.ports]]
-    force_https = true
-    handlers = ["http"]
-    port = 80
-
-  [[services.ports]]
-    handlers = ["tls", "http"]
-    port = 443
