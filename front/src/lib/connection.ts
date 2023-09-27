@@ -129,8 +129,7 @@ export const init = () => {
 
     terminated = false;
 
-    // server = new WebSocket(`ws://${location.host}/connect`)
-    server = new WebSocket(`ws://192.168.0.102:3000/connect`)
+    server = new WebSocket(`${import.meta.env.VITE_HOST}/connect`)
     server.onmessage = onMessage
     server.onclose = onClose
     server.onopen = onOpen
