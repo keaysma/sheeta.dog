@@ -2,10 +2,11 @@
   "name": "front",
   "version": "0.0.1",
   "scripts": {
-    "d": "vite dev",
+    "d": "vite dev --host",
     "build": "vite build",
     "preview": "vite preview",
     "types": "cp -r ../back/src/types ./src",
+    "prepare": "svelte-kit sync",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "lint": "prettier --plugin-search-dir . --check . && eslint .",
