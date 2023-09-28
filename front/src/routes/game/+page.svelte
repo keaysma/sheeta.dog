@@ -3,7 +3,6 @@
 	import * as connection from '$lib/connection';
 	import { onDestroy, onMount } from 'svelte';
 	import { Vec3, type Body } from 'cannon-es';
-	import { Raycaster, Vector3 } from 'three';
 
 	let canvas: HTMLCanvasElement;
 	let name: string;
