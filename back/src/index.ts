@@ -1,28 +1,11 @@
 import { ClientMessage, ClientMessageType } from "./types/client";
 import { ServerIdentifyMessage, ServerJoinedMessage, ServerLeftMessage, ServerMessage, ServerMessageType, ServerUpdateMessage, ServerWoofMessage } from "./types/server";
 import { WorldState } from "./types/shared";
-import { ServerWebSocket } from "bun";
+import { serve } from "bun";
 
 const STATE: WorldState = {};
 
-// because ws.publish is not working
-const CLIENTS: Record<string, { ws: ServerWebSocket<{ id: string }>, lastUpdate: Date }> = {};
-const publish = (message: ServerMessage) => {
-    for (const { ws } of Object.values(CLIENTS)) {
-        ws.send(JSON.stringify(message));
-    }
-}
-
-const MAX_DEAD_TIME_MS = 10_000;
-setInterval(() => {
-    for (const { ws, lastUpdate } of Object.values(CLIENTS)) {
-        if ((Number(new Date()) - Number(lastUpdate)) > MAX_DEAD_TIME_MS) {
-            ws.close()
-        }
-    }
-}, 10000)
-
-Bun.serve<{ id: string }>({
+const server = serve<{ id: string }>({
     port: 3000,
     fetch(req, server) {
         const url = new URL(req.url);
@@ -38,6 +21,7 @@ Bun.serve<{ id: string }>({
         return new Response('Wiggly')
     },
     websocket: {
+        perMessageDeflate: true,
         open(ws) {
             const id = Math.random().toString(16).substring(2).toUpperCase();
             ws.data = {
@@ -67,10 +51,8 @@ Bun.serve<{ id: string }>({
             }
             ws.send(JSON.stringify(response))
 
-            CLIENTS[id] = {
-                ws,
-                lastUpdate: new Date()
-            };
+            ws.subscribe("game")
+
             const joined: ServerJoinedMessage = {
                 type: ServerMessageType.Joined,
                 id,
@@ -79,18 +61,10 @@ Bun.serve<{ id: string }>({
                     rotation,
                 }
             }
-            publish(joined);
+            ws.publish("game", JSON.stringify(joined));
         },
         message(ws, messageRaw) {
             const { id } = ws.data;
-
-            const client = CLIENTS[id];
-            if (!client) {
-                ws.close()
-                return;
-            }
-
-            CLIENTS[id].lastUpdate = new Date()
 
             const messageString = messageRaw.toString();
             const message: ClientMessage = JSON.parse(messageString);
@@ -106,14 +80,14 @@ Bun.serve<{ id: string }>({
                         id,
                         message,
                     }
-                    publish(response);
+                    ws.publish("game", JSON.stringify(response));
                     break;
                 case ClientMessageType.Woof:
                     const woof: ServerWoofMessage = {
                         type: ServerMessageType.Woof,
                         id,
                     }
-                    publish(woof);
+                    ws.publish("game", JSON.stringify(woof));
                     break;
                 case ClientMessageType.Ping:
                     break;
@@ -121,19 +95,19 @@ Bun.serve<{ id: string }>({
                     console.log('Unknown message type', message)
             }
         },
-        close(ws, code, reason) {
-            // console.log('Client disconnected', ws, code, reason);
+        idleTimeout: 10, // seconds 
+        close(ws) {
             const { id } = ws.data;
 
             delete STATE[id];
-            delete CLIENTS[id];
 
             const response: ServerLeftMessage = {
                 type: ServerMessageType.Left,
                 id,
             }
 
-            publish(response);
+            // ws.publish("game", JSON.stringify(response));
+            server.publish("game", JSON.stringify(response));
         },
     },
 })

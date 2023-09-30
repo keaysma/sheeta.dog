@@ -3,7 +3,7 @@
   "module": "index.ts",
   "type": "module",
   "scripts": {
-    "d": "bun run src/index.ts",
+    "d": "bun run src/index.ts --hot",
     "build": "bun build src/index.ts --target=bun --outdir out --outfile server.ts --minify",
     "serve": "bun run out/index.js"
   },
