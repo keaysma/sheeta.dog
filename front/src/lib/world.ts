@@ -1,5 +1,5 @@
 import { Body, Box, Quaternion, Vec3, World, Material as CannonMaterial, ContactMaterial, Shape, Plane, GSSolver } from 'cannon-es';
-import type { PhysicsData } from '../types/shared';
+import { EntityType, type PhysicsData } from '../types/shared';
 import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Scene, SpotLight, Vector3, Quaternion as ThreeQuaternion, WebGLRenderer, Material, BufferGeometry, CubeTextureLoader, TextureLoader, RepeatWrapping, PlaneGeometry, Euler, DirectionalLight, HemisphereLight, MeshLambertMaterial, PCFSoftShadowMap, CameraHelper, VSMShadowMap, PCFShadowMap, Group, AudioListener, AudioLoader, PositionalAudio } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
@@ -207,7 +207,7 @@ export const addPlayer = (id: string, message: PhysicsData) => {
     const newPlayer = playerModel.clone()
     newPlayer.scale.set(.15, .15, .15)
     scene.add(newPlayer)
-    
+
     addPhysicsBodyToMesh({
         mesh: newPlayer,
         position,
@@ -233,7 +233,7 @@ export const addPlayer = (id: string, message: PhysicsData) => {
     return newPlayer
 }
 
-export const updatePlayer = (player: Object3D, message: PhysicsData) => {
+export const updateEntity = (player: Object3D, message: PhysicsData) => {
     const body: Body = player.userData.body
     body.position.copy(
         positionMessageToVec3(message.position)
@@ -241,6 +241,23 @@ export const updatePlayer = (player: Object3D, message: PhysicsData) => {
     body.quaternion.copy(
         rotationMessageToQuaternion(message.rotation)
     )
+}
+
+export const upsertEntity = (id: string, entityType: EntityType, message: PhysicsData) => {
+    const existingPlayer = scene.getObjectByName(id);
+    if (existingPlayer) {
+        updateEntity(existingPlayer, message);
+    } else {
+        switch(entityType) {
+            case EntityType.Dog:
+                addPlayer(id, message)
+                break;
+            case EntityType.Poo:
+            default:
+                console.log('Unknown entity type', entityType)
+                break;
+        }
+    }
 }
 
 export const init = (canvas: HTMLCanvasElement, name: string | null) => {

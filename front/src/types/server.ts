@@ -1,4 +1,4 @@
-import type { PositionPayload, WorldState } from "./shared";
+import type { EntityType, PhysicsData, WorldState } from "./shared";
 
 export enum ServerMessageType {
     Update = 'update',
@@ -15,13 +15,14 @@ export interface BaseServerMessage {
 export interface ServerUpdateMessage extends BaseServerMessage {
     type: ServerMessageType.Update;
     id: string;
-    message: PositionPayload;
+    message: PhysicsData;
 }
 
 export interface ServerJoinedMessage extends BaseServerMessage {
     type: ServerMessageType.Joined;
     id: string;
-    message: PositionPayload;
+    entityType: EntityType;
+    message: PhysicsData;
 }
 
 export interface ServerLeftMessage extends BaseServerMessage {

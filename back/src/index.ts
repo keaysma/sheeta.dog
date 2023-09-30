@@ -57,6 +57,7 @@ const server = serve<{ id: string }>({
             const joined: ServerJoinedMessage = {
                 type: ServerMessageType.Joined,
                 id,
+                entityType: EntityType.Dog,
                 message: {
                     position,
                     rotation,

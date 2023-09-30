@@ -1,5 +1,5 @@
 import { ServerMessageType, type ServerMessage } from "../types/server";
-import { addAudioToObject, addPlayer, player, scene, updatePlayer } from "./world";
+import { addAudioToObject, addPlayer, player, scene, updateEntity, upsertEntity } from "./world";
 import { ClientMessageType, type ClientRenameMessage, type ClientPositionMessage, type ClientWoofMessage } from "../types/client";
 import { Vec3, type Body } from "cannon-es";
 import { WOOF_AUDIO_FILE_PATHS } from "./consts";
@@ -26,19 +26,14 @@ function onMessage(message: MessageEvent<string>) {
             player.name = data.id;
             Object.entries(data.worldState).forEach(([id, message]) => {
                 if (id === player.name) {
-                    updatePlayer(player, message);
+                    updateEntity(player, message);
                 } else {
                     addPlayer(id, message);
                 }
             });
             break;
         case ServerMessageType.Joined:
-            const existingPlayer = scene.getObjectByName(data.id);
-            if (existingPlayer) {
-                updatePlayer(existingPlayer, data.message);
-            } else {
-                addPlayer(data.id, data.message);
-            }
+            upsertEntity(data.id, data.entityType, data.message)
             break;
         case ServerMessageType.Update:
             if (data.id === player.name) {
@@ -47,7 +42,7 @@ function onMessage(message: MessageEvent<string>) {
 
             const updatee = scene.getObjectByName(data.id);
             if (updatee) {
-                updatePlayer(updatee, data.message);
+                updateEntity(updatee, data.message);
             }
             // else {
             // 	addPlayer(data.id, data.message);
