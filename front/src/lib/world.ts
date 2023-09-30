@@ -1,5 +1,5 @@
 import { Body, Box, Quaternion, Vec3, World, Material as CannonMaterial, ContactMaterial, Shape, Plane, GSSolver } from 'cannon-es';
-import type { PositionPayload } from '../types/shared';
+import type { PhysicsData } from '../types/shared';
 import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Scene, SpotLight, Vector3, Quaternion as ThreeQuaternion, WebGLRenderer, Material, BufferGeometry, CubeTextureLoader, TextureLoader, RepeatWrapping, PlaneGeometry, Euler, DirectionalLight, HemisphereLight, MeshLambertMaterial, PCFSoftShadowMap, CameraHelper, VSMShadowMap, PCFShadowMap, Group, AudioListener, AudioLoader, PositionalAudio } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
@@ -41,10 +41,10 @@ export const loadPlayerModel = async () => {
 
 let loop: boolean = true;
 
-const positionMessageToVec3 = (position: PositionPayload['position']): Vec3 =>
+const positionMessageToVec3 = (position: PhysicsData['position']): Vec3 =>
     new Vec3(position.x, position.y, position.z)
 
-const rotationMessageToQuaternion = (rotation: PositionPayload['rotation']): Quaternion =>
+const rotationMessageToQuaternion = (rotation: PhysicsData['rotation']): Quaternion =>
     new Quaternion(rotation.x, rotation.y, rotation.z, rotation.w)
 
 const translateVector3 = (v: Vec3): Vector3 =>
@@ -197,7 +197,7 @@ export const createPhysicsBox = ({
     })
 }
 
-export const addPlayer = (id: string, message: PositionPayload) => {
+export const addPlayer = (id: string, message: PhysicsData) => {
     const floorDetector = new Box(new Vec3(.1, .1, .1))
     floorDetector.collisionResponse = false
 
@@ -233,7 +233,7 @@ export const addPlayer = (id: string, message: PositionPayload) => {
     return newPlayer
 }
 
-export const updatePlayer = (player: Object3D, message: PositionPayload) => {
+export const updatePlayer = (player: Object3D, message: PhysicsData) => {
     const body: Body = player.userData.body
     body.position.copy(
         positionMessageToVec3(message.position)
@@ -243,7 +243,7 @@ export const updatePlayer = (player: Object3D, message: PositionPayload) => {
     )
 }
 
-export const init = (canvas: HTMLCanvasElement) => {
+export const init = (canvas: HTMLCanvasElement, name: string | null) => {
     const {
         innerWidth: width,
         innerHeight: height
@@ -313,6 +313,7 @@ export const init = (canvas: HTMLCanvasElement) => {
 
     scene.add(light);
 
+    // Shadow debugger
     // const shadowHelper = new CameraHelper(light.shadow.camera);
     // scene.add(shadowHelper);
 
@@ -320,7 +321,6 @@ export const init = (canvas: HTMLCanvasElement) => {
     const floorTexture = new TextureLoader().load('assets/grass.jpg')
     floorTexture.wrapS = floorTexture.wrapT = RepeatWrapping
     floorTexture.repeat.set(10, 10)
-    //*/
     const floor = createPhysicsMesh({
         geometry: new PlaneGeometry(100, 100),
         position: new Vec3(0, 0, 0),
@@ -381,7 +381,7 @@ export const init = (canvas: HTMLCanvasElement) => {
     })
 
     // Player
-    player = addPlayer('', {
+    player = addPlayer(name ?? '', {
         position: new Vec3(0, 5, 0),
         rotation: new Quaternion().setFromEuler(0, 0, 0),
     })

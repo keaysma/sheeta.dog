@@ -1,6 +1,6 @@
 import { ClientMessage, ClientMessageType } from "./types/client";
 import { ServerIdentifyMessage, ServerJoinedMessage, ServerLeftMessage, ServerMessage, ServerMessageType, ServerUpdateMessage, ServerWoofMessage } from "./types/server";
-import { WorldState } from "./types/shared";
+import { EntityType, WorldState } from "./types/shared";
 import { serve } from "bun";
 
 const STATE: WorldState = {};
@@ -40,6 +40,7 @@ const server = serve<{ id: string }>({
                 w: 1,
             };
             STATE[id] = {
+                type: EntityType.Dog,
                 position,
                 rotation,
             };
@@ -66,15 +67,20 @@ const server = serve<{ id: string }>({
         message(ws, messageRaw) {
             const { id } = ws.data;
 
+            if (!STATE[id]) {
+                console.log('No state for', id)
+                ws.close();
+                return;
+            }
+
             const messageString = messageRaw.toString();
             const message: ClientMessage = JSON.parse(messageString);
 
             switch (message.type) {
                 case ClientMessageType.Position:
-                    STATE[id] = {
-                        position: message.position,
-                        rotation: message.rotation,
-                    };
+                    STATE[id].position = message.position;
+                    STATE[id].rotation = message.rotation;
+
                     const response: ServerUpdateMessage = {
                         type: ServerMessageType.Update,
                         id,
@@ -89,7 +95,8 @@ const server = serve<{ id: string }>({
                     }
                     ws.publish("game", JSON.stringify(woof));
                     break;
-                case ClientMessageType.Ping:
+                case ClientMessageType.Rename:
+                    STATE[id].name = message.name;
                     break;
                 default:
                     console.log('Unknown message type', message)

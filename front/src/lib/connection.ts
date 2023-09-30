@@ -1,6 +1,6 @@
 import { ServerMessageType, type ServerMessage } from "../types/server";
 import { addAudioToObject, addPlayer, player, scene, updatePlayer } from "./world";
-import { ClientMessageType, type ClientPingMessage, type ClientPositionMessage, type ClientWoofMessage } from "../types/client";
+import { ClientMessageType, type ClientRenameMessage, type ClientPositionMessage, type ClientWoofMessage } from "../types/client";
 import { Vec3, type Body } from "cannon-es";
 import { WOOF_AUDIO_FILE_PATHS } from "./consts";
 
@@ -85,6 +85,14 @@ function sendPositionUpdate () {
     server.send(JSON.stringify(message));
 }
 
+function sendRename() {
+    const message: ClientRenameMessage = {
+        type: ClientMessageType.Rename,
+        name: player.name
+    }
+    server.send(JSON.stringify(message))
+}
+
 function updateLoop() {
     if(!player) return;
     const playerBody: Body = player.userData.body;
@@ -103,6 +111,8 @@ function updateLoop() {
 function onOpen() {
     updateIntervalId = setInterval(updateLoop, 20)
     staticUpdateIntervalId = setInterval(sendPositionUpdate, 1_000)
+    
+    sendRename()
 }
 
 function onClose() {

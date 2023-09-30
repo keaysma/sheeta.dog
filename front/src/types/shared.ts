@@ -1,4 +1,4 @@
-export interface PositionPayload {
+export interface PhysicsData {
     position: {
         x: number;
         y: number;
@@ -10,6 +10,18 @@ export interface PositionPayload {
         z: number;
         w: number;
     }
+
+    // TODO: Add velocity, angular velocity
 }
 
-export type WorldState = Record<string, PositionPayload>;
+export enum EntityType {
+    Dog = 'dog',
+    Poo = 'poo',
+}
+
+export interface EntityData extends PhysicsData {
+    type: EntityType;
+    name?: string;
+}
+
+export type WorldState = Record<string, EntityData>;

@@ -5,7 +5,6 @@
 	import { Vec3, type Body } from 'cannon-es';
 
 	let canvas: HTMLCanvasElement;
-	let name: string;
 
 	let baseForce = 100;
 	let baseTorque = 10;
@@ -49,11 +48,11 @@
 	}, 1);
 
 	onMount(async () => {
-		name = new URLSearchParams(window.location.search).get('name') ?? 'sheeta';
+		const name = new URLSearchParams(window.location.search).get('name');
 
 		await mainScene.loadPlayerModel();
 
-		mainScene.init(canvas);
+		mainScene.init(canvas, name);
 		connection.init();
 
 		if (name === '__physics_test') {

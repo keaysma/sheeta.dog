@@ -1,21 +1,22 @@
-import type { PositionPayload } from "./shared";
+import type { PhysicsData } from "./shared";
 
 
 export enum ClientMessageType {
-    Ping = 'ping',
     Position = 'position',
     Woof = 'woof',
+    Rename = 'my name is',
 }
 
 export interface BaseClientMessage {
     type: ClientMessageType;
 }
 
-export interface ClientPingMessage extends BaseClientMessage {
-    type: ClientMessageType.Ping;
+export interface ClientRenameMessage extends BaseClientMessage {
+    type: ClientMessageType.Rename;
+    name: string;
 }
 
-export interface ClientPositionMessage extends BaseClientMessage, PositionPayload {
+export interface ClientPositionMessage extends BaseClientMessage, PhysicsData {
     type: ClientMessageType.Position;
 }
 
@@ -23,4 +24,4 @@ export interface ClientWoofMessage extends BaseClientMessage {
     type: ClientMessageType.Woof;
 }
 
-export type ClientMessage = ClientPingMessage | ClientPositionMessage | ClientWoofMessage;
+export type ClientMessage = ClientRenameMessage | ClientPositionMessage | ClientWoofMessage;
