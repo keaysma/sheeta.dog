@@ -1,6 +1,6 @@
 import { ServerMessageType, type ServerMessage } from "../types/server";
 import { addAudioToObject, addPlayer, player, scene, updateEntity, upsertEntity } from "./world";
-import { ClientMessageType, type ClientRenameMessage, type ClientPositionMessage, type ClientWoofMessage } from "../types/client";
+import { ClientMessageType, type ClientRenameMessage, type ClientPositionMessage, type ClientWoofMessage, type ClientPooMessage } from "../types/client";
 import { Vec3, type Body } from "cannon-es";
 import { WOOF_AUDIO_FILE_PATHS } from "./consts";
 
@@ -16,6 +16,13 @@ export function woof() {
     server.send(JSON.stringify(message));
 }
 
+export function poop() {
+    const message: ClientPooMessage = {
+        type: ClientMessageType.Poo
+    }
+    server.send(JSON.stringify(message));
+}
+
 function onMessage(message: MessageEvent<string>) {
     const data: ServerMessage = JSON.parse(message.data);
 
@@ -28,7 +35,7 @@ function onMessage(message: MessageEvent<string>) {
                 if (id === player.name) {
                     updateEntity(player, message);
                 } else {
-                    addPlayer(id, message);
+                    upsertEntity(id, message.type, message);
                 }
             });
             break;
@@ -36,11 +43,13 @@ function onMessage(message: MessageEvent<string>) {
             upsertEntity(data.id, data.entityType, data.message)
             break;
         case ServerMessageType.Update:
+            console.log(data)
             if (data.id === player.name) {
                 break;
             }
 
             const updatee = scene.getObjectByName(data.id);
+            console.log(updatee)
             if (updatee) {
                 updateEntity(updatee, data.message);
             }

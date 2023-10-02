@@ -4,6 +4,7 @@ import type { PhysicsData } from "./shared";
 export enum ClientMessageType {
     Position = 'position',
     Woof = 'woof',
+    Poo = 'stinky poo',
     Rename = 'my name is',
 }
 
@@ -24,4 +25,12 @@ export interface ClientWoofMessage extends BaseClientMessage {
     type: ClientMessageType.Woof;
 }
 
-export type ClientMessage = ClientRenameMessage | ClientPositionMessage | ClientWoofMessage;
+export interface ClientPooMessage extends BaseClientMessage {
+    type: ClientMessageType.Poo;
+}
+
+export type ClientMessage = 
+    | ClientRenameMessage 
+    | ClientPositionMessage 
+    | ClientWoofMessage 
+    | ClientPooMessage

@@ -1,6 +1,6 @@
 import { ClientMessage, ClientMessageType } from "./types/client";
 import { ServerIdentifyMessage, ServerJoinedMessage, ServerLeftMessage, ServerMessage, ServerMessageType, ServerUpdateMessage, ServerWoofMessage } from "./types/server";
-import { EntityType, WorldState } from "./types/shared";
+import { EntityData, EntityType, WorldState } from "./types/shared";
 import { serve } from "bun";
 
 const STATE: WorldState = {};
@@ -36,7 +36,7 @@ const server = serve<{ id: string, name: string | null }>({
                 z: 0,
                 w: 1,
             };
-            
+
             const { id } = ws.data;
             STATE[id] = {
                 type: EntityType.Dog,
@@ -65,7 +65,7 @@ const server = serve<{ id: string, name: string | null }>({
             ws.publish("game", JSON.stringify(joined));
         },
         message(ws, messageRaw) {
-            const { id } = ws.data;
+            const { id, name } = ws.data;
 
             if (!STATE[id]) {
                 console.log('No state for', id)
@@ -81,12 +81,12 @@ const server = serve<{ id: string, name: string | null }>({
                     STATE[id].position = message.position;
                     STATE[id].rotation = message.rotation;
 
-                    const response: ServerUpdateMessage = {
+                    const update: ServerUpdateMessage = {
                         type: ServerMessageType.Update,
                         id,
                         message,
                     }
-                    ws.publish("game", JSON.stringify(response));
+                    ws.publish("game", JSON.stringify(update));
                     break;
                 case ClientMessageType.Woof:
                     const woof: ServerWoofMessage = {
@@ -94,6 +94,40 @@ const server = serve<{ id: string, name: string | null }>({
                         id,
                     }
                     ws.publish("game", JSON.stringify(woof));
+                    break;
+                case ClientMessageType.Poo:
+                    if (!name) break;
+
+                    const existingPoo = Object.values(STATE).find(entity => entity.type === EntityType.Poo && entity.name === name);
+                    if (existingPoo) {
+                        existingPoo.position = STATE[id].position;
+                        existingPoo.rotation = STATE[id].rotation;
+
+                        const pooUpdate: ServerUpdateMessage = {
+                            type: ServerMessageType.Update,
+                            id: name,
+                            message: existingPoo,
+                        }
+                        ws.publish("game", JSON.stringify(pooUpdate));
+                        ws.send(JSON.stringify(pooUpdate));
+                    } else {
+                        const newPoo: EntityData = {
+                            type: EntityType.Poo,
+                            position: STATE[id].position,
+                            rotation: STATE[id].rotation,
+                            name,
+                        }
+                        STATE[name] = newPoo;
+                        
+                        const pooJoined: ServerJoinedMessage = {
+                            type: ServerMessageType.Joined,
+                            id: name,
+                            entityType: EntityType.Poo,
+                            message: newPoo,
+                        }
+                        ws.publish("game", JSON.stringify(pooJoined));
+                        ws.send(JSON.stringify(pooJoined));
+                    }
                     break;
                 case ClientMessageType.Rename:
                     STATE[id].name = message.name;

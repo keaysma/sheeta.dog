@@ -91,6 +91,8 @@
 	on:keydown={(event) => {
 		if (event.key === 'b') {
 			connection.woof();
+		} else if (event.key === 'p') {
+			connection.poop();
 		} else {
 			pressedKeys.add(event.key.toLowerCase());
 		}

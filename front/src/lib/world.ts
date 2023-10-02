@@ -2,6 +2,8 @@ import { Body, Box, Quaternion, Vec3, World, Material as CannonMaterial, Contact
 import { EntityType, type PhysicsData } from '../types/shared';
 import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Scene, SpotLight, Vector3, Quaternion as ThreeQuaternion, WebGLRenderer, Material, BufferGeometry, CubeTextureLoader, TextureLoader, RepeatWrapping, PlaneGeometry, Euler, DirectionalLight, HemisphereLight, MeshLambertMaterial, PCFSoftShadowMap, CameraHelper, VSMShadowMap, PCFShadowMap, Group, AudioListener, AudioLoader, PositionalAudio } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry';
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader';
 
 let shadows = false
 
@@ -44,12 +46,14 @@ const pooModel: Promise<Object3D> = (() => {
             model.scene.traverse(
                 function (child: Object3D | Mesh) {
                     if ('isMesh' in child && child.isMesh) {
-                        child.material = new MeshLambertMaterial({ color: 0xdd00ff })
+                        child.material = new MeshLambertMaterial({ color: 0xffe600 })
                         child.castShadow = shadows
                         child.receiveShadow = shadows
                     }
                 }
             )
+            model.scene.rotation.setFromVector3(new Vector3(-Math.PI / 2, 0, 0))
+            model.scene.position.set(0, -3, 0)
             res(model.scene)
         })
     })
@@ -217,7 +221,30 @@ export const addPoo = (id: string, message: PhysicsData) => {
     const base = new Object3D()
     pooModel.then((model) => base.add(model.clone()))
 
-    base.scale.setScalar(1)
+    const loader = new FontLoader();
+
+    loader.load('assets/papyrus.json', function (font) {
+
+        const textGeometry = new TextGeometry(id, {
+            font: font,
+            size: 80,
+            height: 5,
+            curveSegments: 12,
+            bevelEnabled: true,
+            bevelThickness: 10,
+            bevelSize: 8,
+            bevelOffset: 0,
+            bevelSegments: 5
+        });
+
+        const textMaterial = new MeshLambertMaterial({ color: 0xffffff })
+        const text = new Mesh(textGeometry, textMaterial)
+        text.position.set(-5, 5, 0)
+        text.scale.setScalar(0.04)
+        base.add(text)
+    });
+
+    base.scale.setScalar(0.15)
     base.name = id
     scene.add(base)
 
@@ -230,6 +257,8 @@ export const addPoo = (id: string, message: PhysicsData) => {
     base.quaternion.copy(
         translateQuaternion(rotation)
     )
+
+    base.userData.type = EntityType.Poo
 
     return base
 }
@@ -258,6 +287,7 @@ export const addPlayer = (id: string, message: PhysicsData) => {
         mass: 10,
     })
 
+    base.userData.type = EntityType.Dog
     base.userData.canJump = true
     base.userData.body.addEventListener('collide', () => {
         base.userData.canJump = true
@@ -269,17 +299,28 @@ export const addPlayer = (id: string, message: PhysicsData) => {
     return base
 }
 
-export const updateEntity = (player: Object3D, message: PhysicsData) => {
-    const body: Body = player.userData.body
-    body.position.copy(
-        positionMessageToVec3(message.position)
-    )
-    body.quaternion.copy(
-        rotationMessageToQuaternion(message.rotation)
-    )
+export const updateEntity = (entity: Object3D, message: PhysicsData) => {
+    const position = positionMessageToVec3(message.position)
+    const rotation = rotationMessageToQuaternion(message.rotation)
+    switch (entity.userData.type) {
+        case EntityType.Dog:
+            const body: Body = entity.userData.body
+            body.position.copy(position)
+            body.quaternion.copy(rotation)
+            break;
+        case EntityType.Poo:
+            entity.position.copy(translateVector3(position))
+            entity.quaternion.copy(translateQuaternion(rotation))
+            break;
+        default:
+            console.log('Unknown entity type', entity.userData.type)
+            break;
+    }
+
 }
 
 export const upsertEntity = (id: string, entityType: EntityType, message: PhysicsData) => {
+    console.log('upserting', id, entityType, message)
     const existingEntity = scene.getObjectByName(id);
     if (existingEntity) {
         updateEntity(existingEntity, message);
