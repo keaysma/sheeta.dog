@@ -106,8 +106,6 @@ function updateLoop() {
 function onOpen() {
     updateIntervalId = setInterval(updateLoop, 20)
     staticUpdateIntervalId = setInterval(sendPositionUpdate, 1_000)
-    
-    sendRename()
 }
 
 function onClose() {
@@ -133,7 +131,9 @@ export const init = () => {
 
     terminated = false;
 
-    server = new WebSocket(`${import.meta.env.VITE_HOST}/connect`)
+    const name = new URLSearchParams(window.location.search).get('name');
+
+    server = new WebSocket(`${import.meta.env.VITE_HOST}/connect?name=${name}`)
     server.onmessage = onMessage
     server.onclose = onClose
     server.onopen = onOpen

@@ -5,13 +5,15 @@ import { serve } from "bun";
 
 const STATE: WorldState = {};
 
-const server = serve<{ id: string }>({
+const server = serve<{ id: string, name: string | null }>({
     port: 3000,
     fetch(req, server) {
         const url = new URL(req.url);
-        console.log(url.pathname)
+        console.log(url.href)
         if (url.pathname === "/connect") {
-            if (server.upgrade(req)) {
+            const name = url.searchParams.get("name");
+            const id = Math.random().toString(16).substring(2).toUpperCase();
+            if (server.upgrade(req, { data: { id, name } })) {
                 console.log('upgraded!')
                 return;
             }
@@ -23,11 +25,6 @@ const server = serve<{ id: string }>({
     websocket: {
         perMessageDeflate: true,
         open(ws) {
-            const id = Math.random().toString(16).substring(2).toUpperCase();
-            ws.data = {
-                id,
-            }
-
             const position = {
                 x: (Math.random() - 0.5) * 50,
                 y: 1,
@@ -39,6 +36,8 @@ const server = serve<{ id: string }>({
                 z: 0,
                 w: 1,
             };
+            
+            const { id } = ws.data;
             STATE[id] = {
                 type: EntityType.Dog,
                 position,

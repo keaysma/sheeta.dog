@@ -40,7 +40,7 @@ const playerModel: Promise<Object3D> = (() => {
 const pooModel: Promise<Object3D> = (() => {
     const pooModelLoader = new GLTFLoader()
     return new Promise<Object3D>((res) => {
-        pooModelLoader.load('assets/poo.glb', (model) => {
+        pooModelLoader.load('assets/poo.gltf', (model) => {
             model.scene.traverse(
                 function (child: Object3D | Mesh) {
                     if ('isMesh' in child && child.isMesh) {
@@ -298,7 +298,7 @@ export const upsertEntity = (id: string, entityType: EntityType, message: Physic
     }
 }
 
-export const init = (canvas: HTMLCanvasElement, name: string | null) => {
+export const init = (canvas: HTMLCanvasElement) => {
     const {
         innerWidth: width,
         innerHeight: height
@@ -436,7 +436,7 @@ export const init = (canvas: HTMLCanvasElement, name: string | null) => {
     })
 
     // Player
-    player = addPlayer(name ?? '', {
+    player = addPlayer('', {
         position: new Vec3(0, 5, 0),
         rotation: new Quaternion().setFromEuler(0, 0, 0),
     })

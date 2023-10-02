@@ -48,11 +48,10 @@
 	}, 1);
 
 	onMount(async () => {
-		const name = new URLSearchParams(window.location.search).get('name');
-
-		mainScene.init(canvas, name);
+		mainScene.init(canvas);
 		connection.init();
-
+		
+		const name = new URLSearchParams(window.location.search).get('name');
 		if (name === '__physics_test') {
 			(async () => {
 				await new Promise((resolve) => setTimeout(resolve, 2000));
