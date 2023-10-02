@@ -19,11 +19,9 @@ const contactGroundPlayer = new ContactMaterial(groundMaterial, playerMaterial, 
     restitution: 0,
 })
 
-let playerModel: Group
-
-export const loadPlayerModel = async () => {
+const playerModel: Promise<Object3D> = (() => {
     const playerModelLoader = new GLTFLoader()
-    playerModel = await new Promise<Group>((res) => {
+    return new Promise<Object3D>((res) => {
         playerModelLoader.load('assets/frenchie.glb', (model) => {
             model.scene.traverse(
                 function (child: Object3D | Mesh) {
@@ -37,7 +35,25 @@ export const loadPlayerModel = async () => {
             res(model.scene)
         })
     })
-}
+})()
+
+const pooModel: Promise<Object3D> = (() => {
+    const pooModelLoader = new GLTFLoader()
+    return new Promise<Object3D>((res) => {
+        pooModelLoader.load('assets/poo.glb', (model) => {
+            model.scene.traverse(
+                function (child: Object3D | Mesh) {
+                    if ('isMesh' in child && child.isMesh) {
+                        child.material = new MeshLambertMaterial({ color: 0xdd00ff })
+                        child.castShadow = shadows
+                        child.receiveShadow = shadows
+                    }
+                }
+            )
+            res(model.scene)
+        })
+    })
+})()
 
 let loop: boolean = true;
 
@@ -86,7 +102,7 @@ export const addAudioToObject = (object: Object3D, audioFilePath: string) => {
 }
 
 export const addPhysicsBodyToMesh = ({
-    mesh,
+    base,
     position,
     rotation,
     mass,
@@ -94,7 +110,7 @@ export const addPhysicsBodyToMesh = ({
     physicsMaterial
 
 }: {
-    mesh: Object3D,
+    base: Object3D,
     position: Vec3,
     rotation: Quaternion,
     mass: number,
@@ -117,7 +133,7 @@ export const addPhysicsBodyToMesh = ({
 
     colliders.forEach(([shape, offset, rotation]) => body.addShape(shape, offset, rotation))
     world.addBody(body)
-    mesh.userData.body = body
+    base.userData.body = body
 }
 
 export const createPhysicsMesh = (
@@ -142,19 +158,19 @@ export const createPhysicsMesh = (
     }
 ) => {
     const meshMaterial = renderMaterial ?? new MeshBasicMaterial({ color: 0xff0000 })
-    const mesh = new Mesh(geometry, meshMaterial)
-    mesh.position.copy(translateVector3(position))
-    mesh.quaternion.copy(translateQuaternion(rotation))
+    const base = new Mesh(geometry, meshMaterial)
+    base.position.copy(translateVector3(position))
+    base.quaternion.copy(translateQuaternion(rotation))
 
     if (shadows) {
-        mesh.receiveShadow = false
-        mesh.castShadow = true
+        base.receiveShadow = false
+        base.castShadow = true
     }
 
-    scene.add(mesh)
+    scene.add(base)
 
     addPhysicsBodyToMesh({
-        mesh,
+        base,
         position,
         rotation,
         mass,
@@ -162,7 +178,7 @@ export const createPhysicsMesh = (
         physicsMaterial
     })
 
-    return mesh
+    return base
 }
 
 export const createPhysicsBox = ({
@@ -197,19 +213,42 @@ export const createPhysicsBox = ({
     })
 }
 
+export const addPoo = (id: string, message: PhysicsData) => {
+    const base = new Object3D()
+    pooModel.then((model) => base.add(model.clone()))
+
+    base.scale.setScalar(1)
+    base.name = id
+    scene.add(base)
+
+    const position = positionMessageToVec3(message.position)
+    const rotation = rotationMessageToQuaternion(message.rotation)
+    // addPhysicsBodyToMesh
+    base.position.copy(
+        translateVector3(position)
+    )
+    base.quaternion.copy(
+        translateQuaternion(rotation)
+    )
+
+    return base
+}
+
 export const addPlayer = (id: string, message: PhysicsData) => {
     const floorDetector = new Box(new Vec3(.1, .1, .1))
     floorDetector.collisionResponse = false
 
+    const base = new Object3D();
+    playerModel.then((model) => base.add(model.clone()))
+
+    base.scale.setScalar(.15)
+    base.name = id;
+    scene.add(base)
+
     const position = positionMessageToVec3(message.position)
     const rotation = rotationMessageToQuaternion(message.rotation)
-
-    const newPlayer = playerModel.clone()
-    newPlayer.scale.set(.15, .15, .15)
-    scene.add(newPlayer)
-
     addPhysicsBodyToMesh({
-        mesh: newPlayer,
+        base,
         position,
         rotation,
         colliders: [
@@ -219,18 +258,15 @@ export const addPlayer = (id: string, message: PhysicsData) => {
         mass: 10,
     })
 
-    newPlayer.name = id;
-
-    newPlayer.userData.canJump = true
-    newPlayer.userData.body.addEventListener('collide', () => {
-        newPlayer.userData.canJump = true
+    base.userData.canJump = true
+    base.userData.body.addEventListener('collide', () => {
+        base.userData.canJump = true
     })
-    newPlayer.userData.body.addEventListener('collideEnd', () => {
-        newPlayer.userData.canJump = false
+    base.userData.body.addEventListener('collideEnd', () => {
+        base.userData.canJump = false
     })
 
-
-    return newPlayer
+    return base
 }
 
 export const updateEntity = (player: Object3D, message: PhysicsData) => {
@@ -244,15 +280,17 @@ export const updateEntity = (player: Object3D, message: PhysicsData) => {
 }
 
 export const upsertEntity = (id: string, entityType: EntityType, message: PhysicsData) => {
-    const existingPlayer = scene.getObjectByName(id);
-    if (existingPlayer) {
-        updateEntity(existingPlayer, message);
+    const existingEntity = scene.getObjectByName(id);
+    if (existingEntity) {
+        updateEntity(existingEntity, message);
     } else {
-        switch(entityType) {
+        switch (entityType) {
             case EntityType.Dog:
                 addPlayer(id, message)
                 break;
             case EntityType.Poo:
+                addPoo(id, message)
+                break;
             default:
                 console.log('Unknown entity type', entityType)
                 break;
@@ -384,16 +422,16 @@ export const init = (canvas: HTMLCanvasElement, name: string | null) => {
             }
         ]
         setsPositionRotation.forEach(({ position, rotation }) => {
-            const mesh = gltf.scene.clone()
+            const base = gltf.scene.clone()
             addPhysicsBodyToMesh({
-                mesh,
+                base,
                 position,
                 rotation,
                 colliders,
                 mass: 0,
                 physicsMaterial: groundMaterial,
             })
-            scene.add(mesh)
+            scene.add(base)
         })
     })
 

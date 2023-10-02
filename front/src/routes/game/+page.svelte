@@ -50,8 +50,6 @@
 	onMount(async () => {
 		const name = new URLSearchParams(window.location.search).get('name');
 
-		await mainScene.loadPlayerModel();
-
 		mainScene.init(canvas, name);
 		connection.init();
 
