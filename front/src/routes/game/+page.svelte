@@ -87,6 +87,11 @@
 	});
 </script>
 
+<svelte:head>
+	<title>sheeta.dog</title>
+	<meta name="description" content="SHEETA DOT DOG" />
+</svelte:head>
+
 <svelte:window
 	on:keydown={(event) => {
 		if (event.key === 'b') {
@@ -106,15 +111,34 @@
 	}}
 />
 
-<svelte:head>
-	<title>Home</title>
-	<meta name="description" content="Svelte demo app" />
-</svelte:head>
-
 <canvas bind:this={canvas} />
+<p>press b to bark, press p to POOP</p>
 
 <style lang="scss">
 	canvas {
 		flex: 1;
+	}
+
+	p {
+		position: absolute;
+		top: 0;
+		left: 1em;
+		z-index: 100;
+		filter: invert(1);
+
+		opacity: 0;
+		animation: flash 1s 10;
+	}
+
+	@keyframes flash {
+		0% {
+			opacity: 0;
+		}
+		50% {
+			opacity: 1;
+		}
+		100% {
+			opacity: 0;
+		}
 	}
 </style>
