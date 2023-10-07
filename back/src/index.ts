@@ -1,5 +1,5 @@
 import { ClientMessage, ClientMessageType } from "./types/client";
-import { ServerIdentifyMessage, ServerJoinedMessage, ServerLeftMessage, ServerMessage, ServerMessageType, ServerUpdateMessage, ServerWoofMessage } from "./types/server";
+import { ServerIdentifyMessage, ServerJoinedMessage, ServerLeftMessage, ServerMessageType, ServerUpdateMessage, ServerWoofMessage } from "./types/server";
 import { EntityData, EntityType, WorldState } from "./types/shared";
 import { serve } from "bun";
 
@@ -93,7 +93,11 @@ const server = serve<{ id: string, name: string | null }>({
                         type: ServerMessageType.Woof,
                         id,
                     }
-                    ws.publish("game", JSON.stringify(woof));
+                    const payload = JSON.stringify(woof);
+                    ws.cork(() => {
+                        ws.publish("game", payload);
+                        ws.send(payload);
+                    })
                     break;
                 case ClientMessageType.Poo:
                     if (!name) break;
@@ -108,8 +112,11 @@ const server = serve<{ id: string, name: string | null }>({
                             id: name,
                             message: existingPoo,
                         }
-                        ws.publish("game", JSON.stringify(pooUpdate));
-                        ws.send(JSON.stringify(pooUpdate));
+                        const pooUpdatePayload = JSON.stringify(pooUpdate);
+                        ws.cork(() => {
+                            ws.publish("game", pooUpdatePayload);
+                            ws.send(pooUpdatePayload);
+                        })
                     } else {
                         const newPoo: EntityData = {
                             type: EntityType.Poo,
@@ -118,15 +125,18 @@ const server = serve<{ id: string, name: string | null }>({
                             name,
                         }
                         STATE[name] = newPoo;
-                        
+
                         const pooJoined: ServerJoinedMessage = {
                             type: ServerMessageType.Joined,
                             id: name,
                             entityType: EntityType.Poo,
                             message: newPoo,
                         }
-                        ws.publish("game", JSON.stringify(pooJoined));
-                        ws.send(JSON.stringify(pooJoined));
+                        const pooJoinedPayload = JSON.stringify(pooJoined);
+                        ws.cork(() => {
+                            ws.publish("game", pooJoinedPayload);
+                            ws.send(pooJoinedPayload);
+                        })
                     }
                     break;
                 case ClientMessageType.Rename:
