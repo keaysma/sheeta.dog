@@ -12,6 +12,7 @@ kill_timeout = "5s"
 
 [env]
   PORT = "3000"
+  REDIS_URL = "redis://default:04af505fef7942bab3f46dbb961193ff@fly-bullystick.upstash.io"
 
 [[services]]
   protocol = "tcp"
