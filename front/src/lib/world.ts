@@ -21,43 +21,9 @@ const contactGroundPlayer = new ContactMaterial(groundMaterial, playerMaterial, 
     restitution: 0,
 })
 
-const playerModel: Promise<Object3D> = (() => {
-    const playerModelLoader = new GLTFLoader()
-    return new Promise<Object3D>((res) => {
-        playerModelLoader.load('assets/frenchie.glb', (model) => {
-            model.scene.traverse(
-                function (child: Object3D | Mesh) {
-                    if ('isMesh' in child && child.isMesh) {
-                        child.material = new MeshLambertMaterial({ color: 0xdd00ff })
-                        child.castShadow = shadows
-                        child.receiveShadow = shadows
-                    }
-                }
-            )
-            res(model.scene)
-        })
-    })
-})()
+let playerModel: Promise<Object3D>
 
-const pooModel: Promise<Object3D> = (() => {
-    const pooModelLoader = new GLTFLoader()
-    return new Promise<Object3D>((res) => {
-        pooModelLoader.load('assets/poo.gltf', (model) => {
-            model.scene.traverse(
-                function (child: Object3D | Mesh) {
-                    if ('isMesh' in child && child.isMesh) {
-                        child.material = new MeshLambertMaterial({ color: 0xffe600 })
-                        child.castShadow = shadows
-                        child.receiveShadow = shadows
-                    }
-                }
-            )
-            model.scene.rotation.setFromVector3(new Vector3(-Math.PI / 2, 0, 0))
-            model.scene.position.set(0, -3, 0)
-            res(model.scene)
-        })
-    })
-})()
+let pooModel: Promise<Object3D>
 
 let loop: boolean = true;
 
@@ -340,6 +306,44 @@ export const upsertEntity = (id: string, entityType: EntityType, message: Physic
 }
 
 export const init = (canvas: HTMLCanvasElement) => {
+    playerModel = (() => {
+        const playerModelLoader = new GLTFLoader()
+        return new Promise<Object3D>((res) => {
+            playerModelLoader.load('assets/frenchie.glb', (model) => {
+                model.scene.traverse(
+                    function (child: Object3D | Mesh) {
+                        if ('isMesh' in child && child.isMesh) {
+                            child.material = new MeshLambertMaterial({ color: 0xdd00ff })
+                            child.castShadow = shadows
+                            child.receiveShadow = shadows
+                        }
+                    }
+                )
+                res(model.scene)
+            })
+        })
+    })()
+
+    pooModel = (() => {
+        const pooModelLoader = new GLTFLoader()
+        return new Promise<Object3D>((res) => {
+            pooModelLoader.load('assets/poo.gltf', (model) => {
+                model.scene.traverse(
+                    function (child: Object3D | Mesh) {
+                        if ('isMesh' in child && child.isMesh) {
+                            child.material = new MeshLambertMaterial({ color: 0xffe600 })
+                            child.castShadow = shadows
+                            child.receiveShadow = shadows
+                        }
+                    }
+                )
+                model.scene.rotation.setFromVector3(new Vector3(-Math.PI / 2, 0, 0))
+                model.scene.position.set(0, -3, 0)
+                res(model.scene)
+            })
+        })
+    })()
+
     const {
         innerWidth: width,
         innerHeight: height
