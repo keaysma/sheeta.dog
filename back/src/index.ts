@@ -2,6 +2,7 @@ import { ClientMessage, ClientMessageType } from "./types/client";
 import { ServerIdentifyMessage, ServerJoinedMessage, ServerLeftMessage, ServerMessageType, ServerUpdateMessage, ServerWoofMessage } from "./types/server";
 import { EntityData, EntityType, WorldState } from "./types/shared";
 import { serve } from "bun";
+import { createClient } from "redis";
 
 const STATE: WorldState = {};
 
@@ -86,18 +87,15 @@ const server = serve<{ id: string, name: string | null }>({
                         id,
                         message,
                     }
-                    ws.publish("game", JSON.stringify(update));
+
+                    redis.publish("game", JSON.stringify(update))
                     break;
                 case ClientMessageType.Woof:
                     const woof: ServerWoofMessage = {
                         type: ServerMessageType.Woof,
                         id,
                     }
-                    const payload = JSON.stringify(woof);
-                    ws.cork(() => {
-                        ws.publish("game", payload);
-                        ws.send(payload);
-                    })
+                    redis.publish("game", JSON.stringify(woof))
                     break;
                 case ClientMessageType.Poo:
                     if (!name) break;
@@ -112,11 +110,7 @@ const server = serve<{ id: string, name: string | null }>({
                             id: name,
                             message: existingPoo,
                         }
-                        const pooUpdatePayload = JSON.stringify(pooUpdate);
-                        ws.cork(() => {
-                            ws.publish("game", pooUpdatePayload);
-                            ws.send(pooUpdatePayload);
-                        })
+                        redis.publish("game", JSON.stringify(pooUpdate))
                     } else {
                         const newPoo: EntityData = {
                             type: EntityType.Poo,
@@ -132,11 +126,7 @@ const server = serve<{ id: string, name: string | null }>({
                             entityType: EntityType.Poo,
                             message: newPoo,
                         }
-                        const pooJoinedPayload = JSON.stringify(pooJoined);
-                        ws.cork(() => {
-                            ws.publish("game", pooJoinedPayload);
-                            ws.send(pooJoinedPayload);
-                        })
+                        redis.publish("game", JSON.stringify(pooJoined))
                     }
                     break;
                 case ClientMessageType.Rename:
@@ -157,10 +147,17 @@ const server = serve<{ id: string, name: string | null }>({
                 id,
             }
 
-            // ws.publish("game", JSON.stringify(response));
             server.publish("game", JSON.stringify(response));
         },
     },
 })
 
 console.log('Server started on port 3000')
+
+const redis = await createClient().connect();
+const listener = await redis.duplicate().connect();
+await listener.subscribe("game", (message) => {
+    server.publish("game", message)
+});
+
+console.log('Redis connected')
