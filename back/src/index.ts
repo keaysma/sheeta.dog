@@ -1,10 +1,9 @@
 import { ClientMessage, ClientMessageType } from "./types/client";
 import { ServerIdentifyMessage, ServerJoinedMessage, ServerLeftMessage, ServerMessageType, ServerUpdateMessage, ServerWoofMessage } from "./types/server";
 import { EntityData, EntityType, WorldState } from "./types/shared";
+import { redis } from "./redis";
+import * as worldState from "./worldState";
 import { serve } from "bun";
-import { createClient } from "redis";
-
-const STATE: WorldState = {};
 
 const server = serve<{ id: string, name: string | null }>({
     port: 3000,
@@ -25,7 +24,7 @@ const server = serve<{ id: string, name: string | null }>({
     },
     websocket: {
         perMessageDeflate: true,
-        open(ws) {
+        async open(ws) {
             const position = {
                 x: (Math.random() - 0.5) * 50,
                 y: 1,
@@ -39,16 +38,16 @@ const server = serve<{ id: string, name: string | null }>({
             };
 
             const { id } = ws.data;
-            STATE[id] = {
+            await worldState.upsertEntity(id, {
                 type: EntityType.Dog,
                 position,
                 rotation,
-            };
+            })
 
             const response: ServerIdentifyMessage = {
                 type: ServerMessageType.Identify,
                 id,
-                worldState: STATE,
+                worldState: await worldState.getAllEntities(),
             }
             ws.send(JSON.stringify(response))
 
@@ -65,10 +64,11 @@ const server = serve<{ id: string, name: string | null }>({
             }
             ws.publish("game", JSON.stringify(joined));
         },
-        message(ws, messageRaw) {
+        async message(ws, messageRaw) {
             const { id, name } = ws.data;
 
-            if (!STATE[id]) {
+            const entity = await worldState.getEntity(id);
+            if (!entity) {
                 console.log('No state for', id)
                 ws.close();
                 return;
@@ -79,8 +79,11 @@ const server = serve<{ id: string, name: string | null }>({
 
             switch (message.type) {
                 case ClientMessageType.Position:
-                    STATE[id].position = message.position;
-                    STATE[id].rotation = message.rotation;
+                    worldState.upsertEntity(id, {
+                        ... entity,
+                        position: message.position,
+                        rotation: message.rotation,
+                    })
 
                     const update: ServerUpdateMessage = {
                         type: ServerMessageType.Update,
@@ -100,10 +103,11 @@ const server = serve<{ id: string, name: string | null }>({
                 case ClientMessageType.Poo:
                     if (!name) break;
 
-                    const existingPoo = Object.values(STATE).find(entity => entity.type === EntityType.Poo && entity.name === name);
+                    const existingPoo = await worldState.getEntity(name);
                     if (existingPoo) {
-                        existingPoo.position = STATE[id].position;
-                        existingPoo.rotation = STATE[id].rotation;
+                        existingPoo.position = entity.position;
+                        existingPoo.rotation = entity.rotation;
+                        worldState.upsertEntity(name, existingPoo)
 
                         const pooUpdate: ServerUpdateMessage = {
                             type: ServerMessageType.Update,
@@ -114,11 +118,11 @@ const server = serve<{ id: string, name: string | null }>({
                     } else {
                         const newPoo: EntityData = {
                             type: EntityType.Poo,
-                            position: STATE[id].position,
-                            rotation: STATE[id].rotation,
+                            position: entity.position,
+                            rotation: entity.rotation,
                             name,
                         }
-                        STATE[name] = newPoo;
+                        worldState.upsertEntity(name, newPoo)
 
                         const pooJoined: ServerJoinedMessage = {
                             type: ServerMessageType.Joined,
@@ -130,17 +134,20 @@ const server = serve<{ id: string, name: string | null }>({
                     }
                     break;
                 case ClientMessageType.Rename:
-                    STATE[id].name = message.name;
+                    await worldState.upsertEntity(id, {
+                        ... entity,
+                        name: message.name,
+                    })
                     break;
                 default:
                     console.log('Unknown message type', message)
             }
         },
         idleTimeout: 10, // seconds 
-        close(ws) {
+        async close(ws) {
             const { id } = ws.data;
 
-            delete STATE[id];
+            worldState.removeEntity(id);
 
             const response: ServerLeftMessage = {
                 type: ServerMessageType.Left,
@@ -154,7 +161,7 @@ const server = serve<{ id: string, name: string | null }>({
 
 console.log('Server started on port 3000')
 
-const redis = await createClient().connect();
+
 const listener = await redis.duplicate().connect();
 await listener.subscribe("game", (message) => {
     server.publish("game", message)
