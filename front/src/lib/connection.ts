@@ -43,7 +43,6 @@ function onMessage(message: MessageEvent<string>) {
             upsertEntity(data.id, data.entityType, data.message)
             break;
         case ServerMessageType.Update:
-            console.log(data)
             if (data.id === player.name) {
                 break;
             }
@@ -59,11 +58,9 @@ function onMessage(message: MessageEvent<string>) {
             break;
         case ServerMessageType.Woof:
             const woofPlayer = scene.getObjectByName(data.id);
-            console.log(woofPlayer)
 
             if (woofPlayer) {
                 const filePath = WOOF_AUDIO_FILE_PATHS[Math.floor(Math.random() * WOOF_AUDIO_FILE_PATHS.length)];
-                console.log(filePath)
 
                 addAudioToObject(
                     woofPlayer,
