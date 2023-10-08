@@ -111,15 +111,15 @@
 	}}
 />
 
-<canvas bind:this={canvas} />
-<p>press b to bark, press p to POOP</p>
+<canvas id="game" bind:this={canvas} />
+<p id="instructions" >press b to bark, press p to POOP</p>
 
 <style lang="scss">
-	canvas {
+	#game {
 		flex: 1;
 	}
 
-	p {
+	#instructions {
 		position: absolute;
 		top: 0;
 		left: 1em;

@@ -17,7 +17,7 @@
 
 <style lang="scss">
 	#home {
-		padding: 2em 4em;
+		padding: 2em;
 
 		> h1 {
 			text-decoration: underline;
