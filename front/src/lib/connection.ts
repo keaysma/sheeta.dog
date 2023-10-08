@@ -48,7 +48,6 @@ function onMessage(message: MessageEvent<string>) {
             }
 
             const updatee = scene.getObjectByName(data.id);
-            console.log(updatee)
             if (updatee) {
                 updateEntity(updatee, data.message);
             }
