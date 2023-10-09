@@ -8,6 +8,9 @@
 
 	let baseForce = 100;
 	let baseTorque = 10;
+	
+	let touchForceMultiplier = 1;
+	let touchTorqueMultiplier = 1;
 
 	let pressedKeys = new Set<string>();
 	let intervalIdKeyboard: number;
@@ -15,8 +18,8 @@
 		if (!mainScene.player) return;
 		const playerBody: Body = mainScene.player.userData.body;
 
-		const currentForce = baseForce * (pressedKeys.has('shift') ? 2 : 1);
-		const currentTorque = baseTorque * (pressedKeys.has('shift') ? 0.25 : 1);
+		const currentForce = baseForce * (pressedKeys.has('shift') ? 2 : 1) * touchForceMultiplier;
+		const currentTorque = baseTorque * (pressedKeys.has('shift') ? 0.25 : 1) * touchTorqueMultiplier;
 
 		if (pressedKeys.has('w')) {
 			playerBody.applyLocalForce(new Vec3(0, 0, -currentForce), new Vec3(0, 0, 0));
@@ -47,10 +50,73 @@
 		// }
 	}, 1);
 
+	const dragThresholdX = 45;
+	const dragThresholdY = 25;
+	let touchStartEvent: TouchEvent | null = null;
+	let didMove = false;
+	const touchStart = (event: TouchEvent) => {
+		touchStartEvent = event;
+	};
+
+	const touchMove = (event: TouchEvent) => {
+		if (!touchStartEvent) return;
+
+		const touchStart = touchStartEvent.touches[0];
+		const touchCurrent = event.touches[0];
+
+		const moveX = touchCurrent.screenX - touchStart.screenX;
+		const moveY = touchCurrent.screenY - touchStart.screenY;
+
+		if (moveX > dragThresholdX) {
+			pressedKeys.delete('a');
+			pressedKeys.add('d');
+			didMove = true;
+		} else if (moveX < -dragThresholdX) {
+			pressedKeys.add('a');
+			pressedKeys.delete('d');
+			didMove = true;
+		} else {
+			pressedKeys.delete('a');
+			pressedKeys.delete('d');
+		}
+		touchTorqueMultiplier = Math.min(1, 6 * (Math.abs(moveX) / window.innerWidth));
+
+		if (moveY > dragThresholdY) {
+			pressedKeys.delete('w');
+			pressedKeys.add('s');
+			didMove = true;
+		} else if (moveY < -dragThresholdY) {
+			pressedKeys.add('w');
+			pressedKeys.delete('s');
+			didMove = true;
+		} else {
+			pressedKeys.delete('w');
+			pressedKeys.delete('s');
+		}
+		touchForceMultiplier = Math.min(1, 6 * (Math.abs(moveY) / window.innerHeight));
+	};
+
+	const touchEnd = (event: TouchEvent) => {
+		if (!touchStartEvent) return;
+
+		if (!didMove) {
+			pressedKeys.add(' ');
+			setTimeout(() => pressedKeys.delete(' '), 100);
+		}
+
+		didMove = false;
+		pressedKeys.delete('w');
+		pressedKeys.delete('a');
+		pressedKeys.delete('s');
+		pressedKeys.delete('d');
+
+		touchStartEvent = null;
+	};
+
 	onMount(async () => {
 		mainScene.init(canvas);
 		connection.init();
-		
+
 		const name = new URLSearchParams(window.location.search).get('name');
 		if (name === '__physics_test') {
 			(async () => {
@@ -103,6 +169,9 @@
 		}
 	}}
 	on:keyup={(event) => pressedKeys.delete(event.key.toLowerCase())}
+	on:touchstart={(event) => touchStart(event)}
+	on:touchmove={(event) => touchMove(event)}
+	on:touchend={(event) => touchEnd(event)}
 	on:blur={() => pressedKeys.clear()}
 	on:resize={() => {
 		mainScene.camera.aspect = window.innerWidth / window.innerHeight;
@@ -112,7 +181,7 @@
 />
 
 <canvas id="game" bind:this={canvas} />
-<p id="instructions" >press b to bark, press p to POOP</p>
+<p id="instructions">press b to bark, press p to POOP</p>
 
 <style lang="scss">
 	#game {
