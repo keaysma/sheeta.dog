@@ -51,9 +51,9 @@ function onMessage(message: MessageEvent<string>) {
             if (updatee) {
                 updateEntity(updatee, data.message);
             }
-            // else {
-            // 	addPlayer(data.id, data.message);
-            // }
+            else {
+            	console.warn(`Update for unknown entity ${data.id}`);
+            }
             break;
         case ServerMessageType.Woof:
             const woofPlayer = scene.getObjectByName(data.id);
