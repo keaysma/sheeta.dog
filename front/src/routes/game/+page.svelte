@@ -8,7 +8,7 @@
 
 	let baseForce = 100;
 	let baseTorque = 10;
-	
+
 	let touchForceMultiplier = 1;
 	let touchTorqueMultiplier = 1;
 
@@ -19,7 +19,8 @@
 		const playerBody: Body = mainScene.player.userData.body;
 
 		const currentForce = baseForce * (pressedKeys.has('shift') ? 2 : 1) * touchForceMultiplier;
-		const currentTorque = baseTorque * (pressedKeys.has('shift') ? 0.25 : 1) * touchTorqueMultiplier;
+		const currentTorque =
+			baseTorque * (pressedKeys.has('shift') ? 0.25 : 1) * touchTorqueMultiplier;
 
 		if (pressedKeys.has('w')) {
 			playerBody.applyLocalForce(new Vec3(0, 0, -currentForce), new Vec3(0, 0, 0));
@@ -53,7 +54,6 @@
 	const dragThresholdX = 45;
 	const dragThresholdY = 25;
 	let touchStartEvent: TouchEvent | null = null;
-	let didMove = false;
 	const touchStart = (event: TouchEvent) => {
 		touchStartEvent = event;
 	};
@@ -70,11 +70,9 @@
 		if (moveX > dragThresholdX) {
 			pressedKeys.delete('a');
 			pressedKeys.add('d');
-			didMove = true;
 		} else if (moveX < -dragThresholdX) {
 			pressedKeys.add('a');
 			pressedKeys.delete('d');
-			didMove = true;
 		} else {
 			pressedKeys.delete('a');
 			pressedKeys.delete('d');
@@ -84,11 +82,9 @@
 		if (moveY > dragThresholdY) {
 			pressedKeys.delete('w');
 			pressedKeys.add('s');
-			didMove = true;
 		} else if (moveY < -dragThresholdY) {
 			pressedKeys.add('w');
 			pressedKeys.delete('s');
-			didMove = true;
 		} else {
 			pressedKeys.delete('w');
 			pressedKeys.delete('s');
@@ -99,12 +95,6 @@
 	const touchEnd = (event: TouchEvent) => {
 		if (!touchStartEvent) return;
 
-		if (!didMove) {
-			pressedKeys.add(' ');
-			setTimeout(() => pressedKeys.delete(' '), 100);
-		}
-
-		didMove = false;
 		pressedKeys.delete('w');
 		pressedKeys.delete('a');
 		pressedKeys.delete('s');
@@ -181,11 +171,67 @@
 />
 
 <canvas id="game" bind:this={canvas} />
+<button
+	id="woof-button"
+	class="mobile-button"
+	on:click={() => {
+		connection.woof();
+	}}>woof</button
+>
+<button
+	id="poop-button"
+	class="mobile-button"
+	on:click={() => {
+		connection.poop();
+	}}>poop</button
+>
+<button
+	id="jump-button"
+	class="mobile-button"
+	on:click={() => {
+		pressedKeys.add(' ');
+		setTimeout(() => pressedKeys.delete(' '), 100);
+	}}>jump</button
+>
 <p id="instructions">press b to bark, press p to POOP</p>
 
 <style lang="scss">
 	#game {
 		flex: 1;
+	}
+
+	.mobile-button {
+		position: absolute;
+		z-index: 100;
+
+		width: 6em;
+		height: 6em;
+
+		border-radius: 1em;
+		border: 1px solid #3333;
+
+		background-color: #3331;
+
+		backdrop-filter: invert(.25);
+
+		@media (min-width: 768px) {
+			display: none;
+		}
+
+		&#woof-button {
+			top: 1em;
+			left: 1em;
+		}
+
+		&#poop-button {
+			top: 1em;
+			right: 1em;
+		}
+
+		&#jump-button {
+			bottom: 1em;
+			right: 1em;
+		}
 	}
 
 	#instructions {
@@ -197,6 +243,10 @@
 
 		opacity: 0;
 		animation: flash 1s 10;
+
+		@media (max-width: 768px) {
+			display: none;
+		}
 	}
 
 	@keyframes flash {
