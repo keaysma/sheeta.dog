@@ -62,7 +62,7 @@ const server = serve<{ id: string, name: string | null }>({
                     rotation,
                 }
             }
-            ws.publish("game", JSON.stringify(joined));
+            redis.publish("game", JSON.stringify(joined));
         },
         async message(ws, messageRaw) {
             const { id, name } = ws.data;
@@ -154,7 +154,7 @@ const server = serve<{ id: string, name: string | null }>({
                 id,
             }
 
-            server.publish("game", JSON.stringify(response));
+            redis.publish("game", JSON.stringify(response));
         },
     },
 })
