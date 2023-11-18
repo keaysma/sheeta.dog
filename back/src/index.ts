@@ -1,9 +1,10 @@
+import { serve } from "bun";
+import { redisClient } from "./redis";
 import { ClientMessage, ClientMessageType } from "./types/client";
 import { ServerIdentifyMessage, ServerJoinedMessage, ServerLeftMessage, ServerMessageType, ServerUpdateMessage, ServerWoofMessage } from "./types/server";
-import { EntityData, EntityType, WorldState } from "./types/shared";
-import { redis } from "./redis";
+import { EntityData, EntityType } from "./types/shared";
+import { uniqueId } from "./utils";
 import * as worldState from "./worldState";
-import { serve } from "bun";
 
 const server = serve<{ id: string, name: string | null }>({
     port: 3000,
@@ -12,7 +13,7 @@ const server = serve<{ id: string, name: string | null }>({
         console.log(url.href)
         if (url.pathname === "/connect") {
             const name = url.searchParams.get("name");
-            const id = Math.random().toString(16).substring(2).toUpperCase();
+            const id = uniqueId();
             if (server.upgrade(req, { data: { id, name } })) {
                 console.log('upgraded!')
                 return;
@@ -62,7 +63,7 @@ const server = serve<{ id: string, name: string | null }>({
                     rotation,
                 }
             }
-            redis.publish("game", JSON.stringify(joined));
+            redisClient.publish("game", JSON.stringify(joined));
         },
         async message(ws, messageRaw) {
             const { id, name } = ws.data;
@@ -91,14 +92,14 @@ const server = serve<{ id: string, name: string | null }>({
                         message,
                     }
 
-                    redis.publish("game", JSON.stringify(update))
+                    redisClient.publish("game", JSON.stringify(update))
                     break;
                 case ClientMessageType.Woof:
                     const woof: ServerWoofMessage = {
                         type: ServerMessageType.Woof,
                         id,
                     }
-                    redis.publish("game", JSON.stringify(woof))
+                    redisClient.publish("game", JSON.stringify(woof))
                     break;
                 case ClientMessageType.Poo:
                     if (!name) break;
@@ -114,7 +115,7 @@ const server = serve<{ id: string, name: string | null }>({
                             id: name,
                             message: existingPoo,
                         }
-                        redis.publish("game", JSON.stringify(pooUpdate))
+                        redisClient.publish("game", JSON.stringify(pooUpdate))
                     } else {
                         const newPoo: EntityData = {
                             type: EntityType.Poo,
@@ -130,7 +131,7 @@ const server = serve<{ id: string, name: string | null }>({
                             entityType: EntityType.Poo,
                             message: newPoo,
                         }
-                        redis.publish("game", JSON.stringify(pooJoined))
+                        redisClient.publish("game", JSON.stringify(pooJoined))
                     }
                     break;
                 case ClientMessageType.Rename:
@@ -154,15 +155,22 @@ const server = serve<{ id: string, name: string | null }>({
                 id,
             }
 
-            redis.publish("game", JSON.stringify(response));
+            redisClient.publish("game", JSON.stringify(response));
         },
     },
 })
 
 console.log('Server started on port 3000')
 
+setInterval(async () => {
+    const heartbeat = uniqueId();
+    console.debug('Heartbeat', heartbeat)
 
-const listener = await redis.duplicate().connect();
+    await redisClient.publish("heartbeat", heartbeat)
+    console.debug('Heartbeat', heartbeat, 'published')
+}, 5000);
+
+const listener = await redisClient.duplicate().connect();
 await listener.subscribe("game", (message) => {
     server.publish("game", message)
 });
