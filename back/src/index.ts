@@ -1,5 +1,5 @@
 import { serve } from "bun";
-import { redisClient } from "./redis";
+import { manualPing, redisClient } from "./redis";
 import { ClientMessage, ClientMessageType } from "./types/client";
 import { ServerIdentifyMessage, ServerJoinedMessage, ServerLeftMessage, ServerMessageType, ServerUpdateMessage, ServerWoofMessage } from "./types/server";
 import { EntityData, EntityType } from "./types/shared";
@@ -162,17 +162,11 @@ const server = serve<{ id: string, name: string | null }>({
 
 console.log('Server started on port 3000')
 
-setInterval(async () => {
-    const heartbeat = uniqueId();
-    console.debug('Heartbeat', heartbeat)
-
-    await redisClient.publish("heartbeat", heartbeat)
-    console.debug('Heartbeat', heartbeat, 'published')
-}, 5000);
-
 const listener = await redisClient.duplicate().connect();
 await listener.subscribe("game", (message) => {
     server.publish("game", message)
 });
+setInterval(manualPing(redisClient), 5000);
+setInterval(manualPing(listener), 5000);
 
 console.log('Redis connected')
